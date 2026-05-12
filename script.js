@@ -211,6 +211,8 @@ async function addTicket() {
     } catch(e) {}
 }
 
+// --- YAHAN SE REPLACE KARNA SHURU KAREIN ---
+
 async function loadTickets(role) {
     try {
         allTicketsData = await fetch(URL).then(r => r.json());
@@ -223,22 +225,29 @@ async function loadTickets(role) {
         [...allTicketsData].reverse().forEach(t => {
             if (role == "Admin" || t.empName == currentUserName) {
                 
-                let attachmentHtml = t.attachment !== "No Attachment" && t.attachment !== "" 
+                let attachmentHtml = t.attachment !== "No Attachment" && t.attachment !== "" && t.attachment !== undefined
                     ? `<a href="${t.attachment}" target="_blank">View File</a>` : "None";
-                let statusClass = "status-" + t.status.split(" ")[0];
+                
+                let statusClass = t.status ? "status-" + t.status.split(" ")[0] : "status-Pending";
+
+                // TEXT CHOTA KARNE KA LOGIC (READ MORE)
+                let safeIssue = t.issue || "";
+                let displayIssue = safeIssue.length > 40 
+                    ? safeIssue.substring(0, 40) + `... <br><a href="#" onclick="viewFullIssue('${t.ticketId}')" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
+                    : safeIssue;
 
                 html += `<tr>
                     <td>${sno++}</td>
                     <td><b>${t.ticketId}</b><br><span class="small-text">${t.date}</span></td>`;
                 
                 if(role == "Admin") {
-                    html += `<td><b>${t.empName}</b><br><span class="small-text">${t.email}</span><br><span class="small-text">${t.phone}</span></td>`;
+                    html += `<td><b>${t.empName || '-'}</b><br><span class="small-text">${t.email || '-'}</span><br><span class="small-text">${t.phone || '-'}</span></td>`;
                 }
 
-                html += `<td>${t.issue}</td>
+                html += `<td>${displayIssue}</td>
                     <td>${attachmentHtml}</td>
-                    <td><a href="#" onclick="openChat('${t.ticketId}')"><b>View Here</b></a></td>
-                    <td class="${statusClass}">${t.status}</td>`;
+                    <td><a href="#" onclick="openChat('${t.ticketId}')"><b>View Chat</b></a></td>
+                    <td class="${statusClass}">${t.status || 'Pending'}</td>`;
                 
                 if (role == "Admin") {
                     let s1 = t.status == "Pending" ? "selected" : "";
@@ -256,6 +265,21 @@ async function loadTickets(role) {
         document.getElementById(role == "Admin" ? "t-adm" : "t-emp").innerHTML = html;
     } catch(e) { console.error(e); }
 }
+
+// BADA ISSUE READ KARNE WALE FUNCTIONS
+function viewFullIssue(ticketId) {
+    let ticket = allTicketsData.find(t => t.ticketId === ticketId);
+    if(ticket) {
+        document.getElementById("full-issue-text").innerText = ticket.issue;
+        document.getElementById("issue-modal").style.display = "flex";
+    }
+}
+
+function closeIssueModal() {
+    document.getElementById("issue-modal").style.display = "none";
+}
+
+// --- YAHAN TAK REPLACE KAREIN ---
 
 async function update(id, s) {
     api({ action: "updateStatus", ticketId: id, newStatus: s });
