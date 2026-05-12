@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ERP Complaint System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div id="view-login" class="card">
+            <h2>ERP Login</h2>
+            <input type="text" id="l-user" placeholder="User ID">
+            <input type="password" id="l-pass" placeholder="Password / PIN">
+            <button id="btn-login" onclick="doLogin()">Login</button>
+            <p onclick="show('view-reg')">New User? Register</p>
+        </div>
+
+        <div id="view-reg" class="card" style="display:none">
+            <h2>Register</h2>
+            <input type="text" id="r-name" placeholder="Full Name *">
+            <input type="text" id="r-coord" placeholder="Coordinator *">
+            <input type="text" id="r-desig" placeholder="Designation *">
+            <input type="password" id="r-pass" placeholder="Set Password *">
+            <input type="email" id="r-email" placeholder="Email *">
+            <button id="btn-otp" class="outline-btn" onclick="sendOTP()">Verify Email</button>
+            <div id="otp-box" style="display:none">
+                <input type="text" id="r-otp" placeholder="Enter 6-digit OTP">
+                <button id="btn-verify-otp" class="outline-btn" onclick="verifyOTP()">Confirm OTP</button>
+            </div>
+            <button id="btn-reg" disabled onclick="doRegister()">Register Account</button>
+            <p onclick="show('view-login')">Back to Login</p>
+        </div>
+
+        <div id="view-reset" class="card" style="display:none">
+            <h2>Reset Password</h2>
+            <input type="password" id="rs-new" placeholder="New Password">
+            <button id="btn-reset" onclick="doReset()">Update & Login</button>
+        </div>
+
+        <div id="view-emp" style="display:none">
+            <div class="header">
+                <h3 style="margin: 0;">Employee Portal</h3>
+                <div style="display: flex; gap: 10px;">
+                    <button class="outline-btn" style="width:auto; margin:0; padding:8px 15px; font-size:14px;" onclick="toggleTicketForm(true)">+ Add Ticket</button>
+                    <button class="logout-btn" onclick="location.reload()">Logout</button>
+                </div>
+            </div>
+            
+            <div id="ticket-form-section" class="card" style="display:none;">
+                <h3>Raise Ticket</h3>
+                <textarea id="t-issue" rows="3" placeholder="Describe your issue... *"></textarea>
+                <div class="file-upload-wrapper">
+                    <label for="t-file" class="small-text">Attach Screenshot/File (Optional, Max 2MB)</label>
+                    <input type="file" id="t-file">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-submit-ticket" onclick="addTicket()">Submit Ticket</button>
+                    <button class="outline-btn" onclick="toggleTicketForm(false)">Cancel</button>
+                </div>
+            </div>
+
+            <div class="card table-container">
+                <table id="t-emp"></table>
+            </div>
+        </div>
+
+        <div id="view-adm" style="display:none">
+            <div class="header">
+                <h3 style="margin: 0;">Admin Panel</h3>
+                <button class="logout-btn" onclick="location.reload()">Logout</button>
+            </div>
+            <div class="card table-container">
+                <table id="t-adm"></table>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="chat-title">Ticket Details</h3>
+                <span class="close-btn" onclick="closeChat()">&times;</span>
+            </div>
+            <div id="chat-box" class="chat-container">
+                </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-msg" placeholder="Type a reply...">
+                <button id="btn-send-reply" onclick="sendReply()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
