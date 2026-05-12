@@ -8,7 +8,7 @@ let currentUserPhone = "";
 let allTicketsData = []; 
 let activeChatTicketId = null;
 
-// SECURITY FIX: Prevent HTML Injection (Dropdown bug fix)
+// SECURITY FIX: Prevent HTML Injection
 function escapeHTML(str) {
     if (!str) return "";
     return str.toString()
@@ -53,6 +53,34 @@ function getBase64(file) {
 }
 
 // ----------------------------------------------------------------
+// SESSION HANDLING (Refresh fix)
+// ----------------------------------------------------------------
+
+window.onload = function() {
+    let sessionData = localStorage.getItem("erp_session");
+    if (sessionData) {
+        // Agar session save hai, toh data nikal kar seedha dashboard kholo
+        let data = JSON.parse(sessionData);
+        user = data.user;
+        currentUserRole = data.role;
+        currentUserName = data.name;
+        currentUserEmail = data.email;
+        currentUserPhone = data.phone;
+        
+        currentUserRole === "Admin" ? show("view-adm") : show("view-emp");
+        loadTickets(currentUserRole);
+    } else {
+        // Agar session nahi hai, toh login kholo
+        show("view-login");
+    }
+};
+
+function doLogout() {
+    localStorage.removeItem("erp_session"); // Saved data delete karo
+    location.reload(); // Page refresh karo (wapas login pe aayega)
+}
+
+// ----------------------------------------------------------------
 // LOGIN, REGISTER & OTP
 // ----------------------------------------------------------------
 
@@ -71,11 +99,20 @@ async function doLogin() {
         if (res.status == "force_reset") {
             show("view-reset");
         } else if (res.status == "success") {
-            currentUserRole = res.role.trim(); // Trim added for safety
+            currentUserRole = res.role.trim(); 
             currentUserName = res.name.trim();
             currentUserEmail = res.email;
             currentUserPhone = res.phone;
             
+            // LOGIN SUCCESS: Data localStorage me save karo
+            localStorage.setItem("erp_session", JSON.stringify({
+                user: user,
+                role: currentUserRole,
+                name: currentUserName,
+                email: currentUserEmail,
+                phone: currentUserPhone
+            }));
+
             res.role == "Admin" ? show("view-adm") : show("view-emp");
             loadTickets(res.role);
         } else { 
@@ -195,7 +232,6 @@ async function addTicket() {
     let currentRows = table.getElementsByTagName("tr").length;
     let tempSno = currentRows > 1 && !table.innerHTML.includes("No tickets") ? currentRows : 1; 
     
-    // Safety check for UI preview
     let safeOptimisticIssue = escapeHTML(issue);
 
     let tempRow = `<tr style="background-color: #f8f9fa; opacity: 0.7;">
@@ -259,7 +295,6 @@ async function loadTickets(role) {
                 
                 let statusClass = t.status ? "status-" + t.status.split(" ")[0] : "status-Pending";
 
-                // READ MORE LOGIC WITH ESCAPE HTML FIX
                 let safeIssue = t.issue ? escapeHTML(t.issue) : "";
                 let displayIssue = safeIssue.length > 40 
                     ? safeIssue.substring(0, 40) + `... <br><a href="#" onclick="viewFullIssue('${t.ticketId}')" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
@@ -307,7 +342,6 @@ async function update(id, s) {
 function viewFullIssue(ticketId) {
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
     if(ticket) {
-        // innerText is naturally safe from HTML injection
         document.getElementById("full-issue-text").innerText = ticket.issue;
         document.getElementById("issue-modal").style.display = "flex";
     }
@@ -333,13 +367,9 @@ function renderChats() {
     let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
     let chatBox = document.getElementById("chat-box");
     
-    // FIX 100% BULLETPROOF ALIGNMENT:
-    // Agar ticket aapka hai, toh Original Issue hamesha Right (chat-mine) me dikhega.
-    // Agar Admin dekh raha hai, toh use Left (chat-other) me dikhega.
     let isMyTicket = (ticket.empName === currentUserName);
     let originalClass = isMyTicket ? "chat-mine" : "chat-other";
     
-    // ESCAPE HTML FUNCTION USED HERE
     let html = `
         <div class="chat-bubble ${originalClass}">
             <div class="chat-sender">${ticket.empName} (Original Issue)</div>
@@ -351,7 +381,6 @@ function renderChats() {
     if(ticket.chats && ticket.chats !== "[]" && ticket.chats !== "") {
         let chatsArr = JSON.parse(ticket.chats);
         chatsArr.forEach(c => {
-            // FIX ALIGNMENT FOR REPLIES (Ignoring case sensitivity and spaces)
             let isMine = (c.senderRole.trim().toLowerCase() === currentUserRole.toLowerCase());
             let bubbleClass = isMine ? "chat-mine" : "chat-other";
             let senderName = (c.senderRole.trim().toLowerCase() === 'admin') ? 'Admin / Support' : ticket.empName;
@@ -380,7 +409,6 @@ async function sendReply() {
     let d = getFormattedDateTime();
     let chatBox = document.getElementById("chat-box");
     
-    // Naya message hamesha meri taraf (Right) dikhega, aur HTML escape hoke render hoga
     chatBox.innerHTML += `
         <div class="chat-bubble chat-mine" style="opacity:0.7;">
             <div class="chat-sender">Sending...</div>
