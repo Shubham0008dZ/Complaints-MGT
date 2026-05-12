@@ -278,7 +278,16 @@ async function addTicket() {
     btn.innerText = "Submit Ticket"; btn.disabled = false;
 }
 
+
+
+// --- SIRF IS FUNCTION KO REPLACE KAREIN ---
+
 async function loadTickets(role) {
+    let tableId = role == "Admin" ? "t-adm" : "t-emp";
+    
+    // FIX: Safed screen ki jagah Loading message dikhayein
+    document.getElementById(tableId).innerHTML = `<tr><td style="text-align:center; padding: 30px; font-size: 16px; color: #555;"><b>⏳ Loading your tickets... Please wait.</b></td></tr>`;
+
     try {
         allTicketsData = await fetch(URL).then(r => r.json());
         
@@ -326,9 +335,18 @@ async function loadTickets(role) {
         });
 
         if(sno === 1) html += `<tr><td colspan="${role == 'Admin' ? 8 : 7}" style="text-align:center;">No tickets found.</td></tr>`;
-        document.getElementById(role == "Admin" ? "t-adm" : "t-emp").innerHTML = html;
-    } catch(e) { console.error(e); }
+        document.getElementById(tableId).innerHTML = html;
+        
+    } catch(e) { 
+        console.error(e); 
+        // FIX: Agar internet slow ho ya fail ho jaye toh Error dikhayein
+        document.getElementById(tableId).innerHTML = `<tr><td style="text-align:center; padding: 30px; font-size: 16px; color: red;"><b>❌ Error loading tickets. Check internet or refresh.</b></td></tr>`;
+    }
 }
+
+// --- YAHAN TAK REPLACE KAREIN ---
+
+
 
 async function update(id, s) {
     api({ action: "updateStatus", ticketId: id, newStatus: s });
