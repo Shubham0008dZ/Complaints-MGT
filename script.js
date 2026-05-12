@@ -7,20 +7,17 @@ let currentUserPhone = "";
 let allTicketsData = []; 
 let activeChatTicketId = null;
 
-// Date Formatter: DD-MM-YYYY HH:MM:SS
 function getFormattedDateTime() {
     let d = new Date();
     let pad = (n) => n < 10 ? '0' + n : n;
     return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-// Show/Hide Screens
 function show(id) {
     ["view-login", "view-reg", "view-reset", "view-emp", "view-adm"].forEach(v => document.getElementById(v).style.display = "none");
     document.getElementById(id).style.display = "block";
 }
 
-// Show/Hide Ticket Form
 function toggleTicketForm(showForm) {
     document.getElementById("ticket-form-section").style.display = showForm ? "block" : "none";
     if(!showForm) {
@@ -29,13 +26,11 @@ function toggleTicketForm(showForm) {
     }
 }
 
-// API Call Helper
 async function api(data) {
     let p = new URLSearchParams(data);
     return fetch(URL, { method: 'POST', body: p }).then(res => res.json());
 }
 
-// Convert File to Base64
 function getBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -75,7 +70,7 @@ async function doLogin() {
             alert("Invalid Login Credentials"); 
         }
     } catch (e) { 
-        alert("Server Error! Check your URL or Internet."); 
+        alert("Server Error!"); 
     }
 
     btn.innerText = "Login"; btn.disabled = false;
@@ -180,6 +175,7 @@ async function addTicket() {
     if(!issue) return alert("Please describe the issue.");
     
     let fileInput = document.getElementById("t-file");
+    let btn = document.getElementById("btn-submit-ticket");
     let d = getFormattedDateTime();
     
     // OPTIMISTIC UI - Instant show in table
@@ -190,7 +186,9 @@ async function addTicket() {
     let tempRow = `<tr style="background-color: #f8f9fa; opacity: 0.7;">
         <td>${tempSno}</td>
         <td><b>Saving...</b><br><span class="small-text">${d}</span></td>
-        <td>${issue}</td><td>None</td><td>-</td><td class="status-Pending">Pending</td></tr>`;
+        <td>${issue.length > 40 ? issue.substring(0,40)+'...' : issue}</td>
+        <td>${fileInput.files.length > 0 ? 'Uploading...' : 'None'}</td>
+        <td>-</td><td class="status-Pending">Pending</td></tr>`;
 
     let tableContent = table.innerHTML.replace(`<tr><td colspan="6" style="text-align:center;">No tickets found.</td></tr>`, "");
     if(tableContent.indexOf("</tr>") !== -1) {
@@ -198,20 +196,36 @@ async function addTicket() {
     } else { table.innerHTML += tempRow; }
 
     toggleTicketForm(false);
+    btn.innerText = "Submitting..."; btn.disabled = true;
 
     let payload = { action: "createTicket", empName: currentUserName, email: currentUserEmail, phone: currentUserPhone, issue: issue, date: d };
 
     try {
         if(fileInput.files.length > 0) {
             let file = fileInput.files[0];
+            if(file.size > 2 * 1024 * 1024) {
+                alert("File is too large. Max 2MB allowed.");
+                btn.innerText = "Submit Ticket"; btn.disabled = false;
+                loadTickets("Employee"); // revert fake row
+                return;
+            }
             payload.fileName = file.name; payload.mimeType = file.type;
             payload.fileData = await getBase64(file);
         }
-        api(payload).then(res => { if(res.status == "success") loadTickets("Employee"); });
-    } catch(e) {}
+        
+        let res = await api(payload);
+        if(res.status == "success") {
+            loadTickets("Employee"); 
+        } else {
+            alert("Error saving ticket.");
+        }
+    } catch(e) {
+        alert("Upload failed. Try without attachment or check internet.");
+        loadTickets("Employee"); // revert fake row on error
+    }
+    
+    btn.innerText = "Submit Ticket"; btn.disabled = false;
 }
-
-// --- YAHAN SE REPLACE KARNA SHURU KAREIN ---
 
 async function loadTickets(role) {
     try {
@@ -230,7 +244,7 @@ async function loadTickets(role) {
                 
                 let statusClass = t.status ? "status-" + t.status.split(" ")[0] : "status-Pending";
 
-                // TEXT CHOTA KARNE KA LOGIC (READ MORE)
+                // READ MORE LOGIC
                 let safeIssue = t.issue || "";
                 let displayIssue = safeIssue.length > 40 
                     ? safeIssue.substring(0, 40) + `... <br><a href="#" onclick="viewFullIssue('${t.ticketId}')" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
@@ -261,12 +275,20 @@ async function loadTickets(role) {
             }
         });
 
-        if(sno === 1) html += `<tr><td colspan="8" style="text-align:center;">No tickets found.</td></tr>`;
+        if(sno === 1) html += `<tr><td colspan="${role == 'Admin' ? 8 : 7}" style="text-align:center;">No tickets found.</td></tr>`;
         document.getElementById(role == "Admin" ? "t-adm" : "t-emp").innerHTML = html;
     } catch(e) { console.error(e); }
 }
 
-// BADA ISSUE READ KARNE WALE FUNCTIONS
+async function update(id, s) {
+    api({ action: "updateStatus", ticketId: id, newStatus: s });
+    setTimeout(() => loadTickets("Admin"), 1000); 
+}
+
+// ----------------------------------------------------------------
+// BADA ISSUE (READ MORE) & CHAT SYSTEM
+// ----------------------------------------------------------------
+
 function viewFullIssue(ticketId) {
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
     if(ticket) {
@@ -278,17 +300,6 @@ function viewFullIssue(ticketId) {
 function closeIssueModal() {
     document.getElementById("issue-modal").style.display = "none";
 }
-
-// --- YAHAN TAK REPLACE KAREIN ---
-
-async function update(id, s) {
-    api({ action: "updateStatus", ticketId: id, newStatus: s });
-    setTimeout(() => loadTickets("Admin"), 1000); 
-}
-
-// ----------------------------------------------------------------
-// CHAT / REPLY SYSTEM
-// ----------------------------------------------------------------
 
 function openChat(ticketId) {
     activeChatTicketId = ticketId;
@@ -306,8 +317,11 @@ function renderChats() {
     let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
     let chatBox = document.getElementById("chat-box");
     
+    // Check original issue kis side dikhana hai
+    let originalClass = currentUserRole === "Employee" ? "chat-mine" : "chat-other";
+    
     let html = `
-        <div class="chat-bubble chat-Employee">
+        <div class="chat-bubble ${originalClass}">
             <div class="chat-sender">${ticket.empName} (Original Issue)</div>
             ${ticket.issue}
             <span class="chat-time">${ticket.date}</span>
@@ -317,9 +331,13 @@ function renderChats() {
     if(ticket.chats && ticket.chats !== "[]" && ticket.chats !== "") {
         let chatsArr = JSON.parse(ticket.chats);
         chatsArr.forEach(c => {
+            // Agar sender aur login user same hain, toh 'chat-mine' (Right), warna 'chat-other' (Left)
+            let bubbleClass = (c.senderRole === currentUserRole) ? "chat-mine" : "chat-other";
+            let senderName = (c.senderRole === 'Admin') ? 'Admin / Support' : ticket.empName;
+            
             html += `
-                <div class="chat-bubble chat-${c.senderRole}">
-                    <div class="chat-sender">${c.senderRole == 'Admin' ? 'Admin / Support' : ticket.empName}</div>
+                <div class="chat-bubble ${bubbleClass}">
+                    <div class="chat-sender">${senderName}</div>
                     ${c.msg}
                     <span class="chat-time">${c.time}</span>
                 </div>
@@ -339,10 +357,11 @@ async function sendReply() {
     btn.innerText = "..."; btn.disabled = true;
 
     let d = getFormattedDateTime();
-    
     let chatBox = document.getElementById("chat-box");
+    
+    // Naya message hamesha meri taraf (Right) dikhega
     chatBox.innerHTML += `
-        <div class="chat-bubble chat-${currentUserRole}" style="opacity:0.7;">
+        <div class="chat-bubble chat-mine" style="opacity:0.7;">
             <div class="chat-sender">Sending...</div>
             ${msg}
             <span class="chat-time">${d}</span>
