@@ -1,11 +1,23 @@
 const URL = "https://script.google.com/macros/s/AKfycbxz1LzTv97BuJhZEps0ntTJ0YGqaMd9MkXSIdiygsEFUDJs0iv7dq1NY2kmY6sJfnWV/exec"; // APNI NAYI URL YAHAN DALEIN
 let user = "";
+
 let currentUserRole = "";
 let currentUserName = "";
 let currentUserEmail = "";
 let currentUserPhone = "";
 let allTicketsData = []; 
 let activeChatTicketId = null;
+
+// SECURITY FIX: Prevent HTML Injection (Dropdown bug fix)
+function escapeHTML(str) {
+    if (!str) return "";
+    return str.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 function getFormattedDateTime() {
     let d = new Date();
@@ -59,8 +71,8 @@ async function doLogin() {
         if (res.status == "force_reset") {
             show("view-reset");
         } else if (res.status == "success") {
-            currentUserRole = res.role;
-            currentUserName = res.name;
+            currentUserRole = res.role.trim(); // Trim added for safety
+            currentUserName = res.name.trim();
             currentUserEmail = res.email;
             currentUserPhone = res.phone;
             
@@ -70,7 +82,7 @@ async function doLogin() {
             alert("Invalid Login Credentials"); 
         }
     } catch (e) { 
-        alert("Server Error!"); 
+        alert("Server Error! Check URL or Internet."); 
     }
 
     btn.innerText = "Login"; btn.disabled = false;
@@ -183,10 +195,13 @@ async function addTicket() {
     let currentRows = table.getElementsByTagName("tr").length;
     let tempSno = currentRows > 1 && !table.innerHTML.includes("No tickets") ? currentRows : 1; 
     
+    // Safety check for UI preview
+    let safeOptimisticIssue = escapeHTML(issue);
+
     let tempRow = `<tr style="background-color: #f8f9fa; opacity: 0.7;">
         <td>${tempSno}</td>
         <td><b>Saving...</b><br><span class="small-text">${d}</span></td>
-        <td>${issue.length > 40 ? issue.substring(0,40)+'...' : issue}</td>
+        <td>${safeOptimisticIssue.length > 40 ? safeOptimisticIssue.substring(0,40)+'...' : safeOptimisticIssue}</td>
         <td>${fileInput.files.length > 0 ? 'Uploading...' : 'None'}</td>
         <td>-</td><td class="status-Pending">Pending</td></tr>`;
 
@@ -206,7 +221,7 @@ async function addTicket() {
             if(file.size > 2 * 1024 * 1024) {
                 alert("File is too large. Max 2MB allowed.");
                 btn.innerText = "Submit Ticket"; btn.disabled = false;
-                loadTickets("Employee"); // revert fake row
+                loadTickets("Employee"); 
                 return;
             }
             payload.fileName = file.name; payload.mimeType = file.type;
@@ -221,7 +236,7 @@ async function addTicket() {
         }
     } catch(e) {
         alert("Upload failed. Try without attachment or check internet.");
-        loadTickets("Employee"); // revert fake row on error
+        loadTickets("Employee"); 
     }
     
     btn.innerText = "Submit Ticket"; btn.disabled = false;
@@ -244,8 +259,8 @@ async function loadTickets(role) {
                 
                 let statusClass = t.status ? "status-" + t.status.split(" ")[0] : "status-Pending";
 
-                // READ MORE LOGIC
-                let safeIssue = t.issue || "";
+                // READ MORE LOGIC WITH ESCAPE HTML FIX
+                let safeIssue = t.issue ? escapeHTML(t.issue) : "";
                 let displayIssue = safeIssue.length > 40 
                     ? safeIssue.substring(0, 40) + `... <br><a href="#" onclick="viewFullIssue('${t.ticketId}')" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
                     : safeIssue;
@@ -292,6 +307,7 @@ async function update(id, s) {
 function viewFullIssue(ticketId) {
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
     if(ticket) {
+        // innerText is naturally safe from HTML injection
         document.getElementById("full-issue-text").innerText = ticket.issue;
         document.getElementById("issue-modal").style.display = "flex";
     }
@@ -317,13 +333,17 @@ function renderChats() {
     let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
     let chatBox = document.getElementById("chat-box");
     
-    // Check original issue kis side dikhana hai
-    let originalClass = currentUserRole === "Employee" ? "chat-mine" : "chat-other";
+    // FIX 100% BULLETPROOF ALIGNMENT:
+    // Agar ticket aapka hai, toh Original Issue hamesha Right (chat-mine) me dikhega.
+    // Agar Admin dekh raha hai, toh use Left (chat-other) me dikhega.
+    let isMyTicket = (ticket.empName === currentUserName);
+    let originalClass = isMyTicket ? "chat-mine" : "chat-other";
     
+    // ESCAPE HTML FUNCTION USED HERE
     let html = `
         <div class="chat-bubble ${originalClass}">
             <div class="chat-sender">${ticket.empName} (Original Issue)</div>
-            ${ticket.issue}
+            ${escapeHTML(ticket.issue)}
             <span class="chat-time">${ticket.date}</span>
         </div>
     `;
@@ -331,14 +351,15 @@ function renderChats() {
     if(ticket.chats && ticket.chats !== "[]" && ticket.chats !== "") {
         let chatsArr = JSON.parse(ticket.chats);
         chatsArr.forEach(c => {
-            // Agar sender aur login user same hain, toh 'chat-mine' (Right), warna 'chat-other' (Left)
-            let bubbleClass = (c.senderRole === currentUserRole) ? "chat-mine" : "chat-other";
-            let senderName = (c.senderRole === 'Admin') ? 'Admin / Support' : ticket.empName;
+            // FIX ALIGNMENT FOR REPLIES (Ignoring case sensitivity and spaces)
+            let isMine = (c.senderRole.trim().toLowerCase() === currentUserRole.toLowerCase());
+            let bubbleClass = isMine ? "chat-mine" : "chat-other";
+            let senderName = (c.senderRole.trim().toLowerCase() === 'admin') ? 'Admin / Support' : ticket.empName;
             
             html += `
                 <div class="chat-bubble ${bubbleClass}">
                     <div class="chat-sender">${senderName}</div>
-                    ${c.msg}
+                    ${escapeHTML(c.msg)}
                     <span class="chat-time">${c.time}</span>
                 </div>
             `;
@@ -359,11 +380,11 @@ async function sendReply() {
     let d = getFormattedDateTime();
     let chatBox = document.getElementById("chat-box");
     
-    // Naya message hamesha meri taraf (Right) dikhega
+    // Naya message hamesha meri taraf (Right) dikhega, aur HTML escape hoke render hoga
     chatBox.innerHTML += `
         <div class="chat-bubble chat-mine" style="opacity:0.7;">
             <div class="chat-sender">Sending...</div>
-            ${msg}
+            ${escapeHTML(msg)}
             <span class="chat-time">${d}</span>
         </div>
     `;
