@@ -1,6 +1,6 @@
 * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; }
 body { background: #f4f7f6; display: flex; justify-content: center; padding: 20px 10px; color: #333; }
-.container { width: 100%; max-width: 800px; }
+.container { width: 100%; max-width: 900px; }
 
 .card { 
     background: white; 
@@ -18,7 +18,7 @@ input, select, textarea {
     margin: 10px 0; 
     border: 1px solid #ccc; 
     border-radius: 6px; 
-    font-size: 16px; /* 16px prevents iOS zoom on focus */
+    font-size: 16px; 
     outline: none;
 }
 input:focus, textarea:focus { border-color: #007bff; }
@@ -53,7 +53,7 @@ input[type="file"] { padding: 10px; border: 1px dashed #ccc; background: #fafafa
 
 /* Fully Responsive Table setup */
 .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 500px; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
 th, td { border: 1px solid #eee; padding: 12px 10px; text-align: left; font-size: 14px; }
 th { background: #f8f9fa; font-weight: bold; }
 a { color: #007bff; text-decoration: none; }
@@ -64,20 +64,23 @@ a:hover { text-decoration: underline; }
 .status-Progress { color: #0284c7; font-weight: bold; }
 .status-Completed { color: #16a34a; font-weight: bold; }
 
-
-
 /* CHAT MODAL STYLES */
 .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 10px; }
 .modal-content { background: #fff; width: 100%; max-width: 500px; border-radius: 12px; display: flex; flex-direction: column; max-height: 90vh; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
 .modal-header { padding: 15px 20px; background: #007bff; color: white; display: flex; justify-content: space-between; align-items: center; }
 .modal-header h3 { margin: 0; font-size: 16px; }
-.close-btn { font-size: 24px; cursor: pointer; font-weight: bold; line-height: 1; }
+.close-btn { font-size: 24px; cursor: pointer; font-weight: bold; line-height: 1; margin-top: -5px; }
 .close-btn:hover { color: #ffcccc; }
 
 .chat-container { padding: 15px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f4f7f6; min-height: 250px; }
 .chat-bubble { padding: 10px 14px; border-radius: 10px; max-width: 80%; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.chat-Admin { align-self: flex-start; background: #fff; border: 1px solid #e2e8f0; border-bottom-left-radius: 0; }
-.chat-Employee { align-self: flex-end; background: #dcfce3; border-bottom-right-radius: 0; }
+
+/* Jo login hai, uske messages Right side (Green) */
+.chat-mine { align-self: flex-end; background: #dcfce3; border-bottom-right-radius: 0; }
+
+/* Saamne wale ke messages Left side (White) */
+.chat-other { align-self: flex-start; background: #fff; border: 1px solid #e2e8f0; border-bottom-left-radius: 0; }
+
 .chat-time { display: block; font-size: 10px; color: #888; margin-top: 5px; text-align: right; }
 .chat-sender { font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #007bff; }
 
