@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="container">
-        <div id="view-login" class="card">
+        <div id="view-login" class="card" style="display:none;">
             <h2>ERP Login</h2>
             <input type="text" id="l-user" placeholder="User ID">
             <input type="password" id="l-pass" placeholder="Password / PIN">
@@ -44,7 +44,7 @@
                 <h3 style="margin: 0;">Employee Portal</h3>
                 <div style="display: flex; gap: 10px;">
                     <button class="outline-btn" style="width:auto; margin:0; padding:8px 15px; font-size:14px;" onclick="toggleTicketForm(true)">+ Add Ticket</button>
-                    <button class="logout-btn" onclick="location.reload()">Logout</button>
+                    <button class="logout-btn" onclick="doLogout()">Logout</button>
                 </div>
             </div>
             
@@ -69,7 +69,7 @@
         <div id="view-adm" style="display:none">
             <div class="header">
                 <h3 style="margin: 0;">Admin Panel</h3>
-                <button class="logout-btn" onclick="location.reload()">Logout</button>
+                <button class="logout-btn" onclick="doLogout()">Logout</button>
             </div>
             <div class="card table-container">
                 <table id="t-adm"></table>
