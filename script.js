@@ -334,12 +334,12 @@ async function sendReply() {
 }
 
 // ----------------------------------------------------------------
-// NEW MOBILE CAPSULE LOGIC WITH DIRECT SLIDE & SPINNING WHEEL
+// NEW MOBILE CAPSULE LOGIC WITH DIRECT SLIDE & FULL REACH WHEEL
 // ----------------------------------------------------------------
 
 let isDragging = false;
 let startX = 0;
-let dragOffset = 0; // Tracks if wheel is already at left/right before drag
+let dragOffset = 0;
 
 function initCapsuleEvents() {
     const wheel = document.getElementById("wheel");
@@ -349,30 +349,28 @@ function initCapsuleEvents() {
     window.addEventListener("touchmove", dragMove, {passive: true});
     window.addEventListener("touchend", dragEnd);
     
-    // For PC testing if needed
     wheel.addEventListener("mousedown", dragStart);
     window.addEventListener("mousemove", dragMove);
     window.addEventListener("mouseup", dragEnd);
 
+    // FIX: Removed center-snap behavior on clicking the bar.
     capsuleBar.addEventListener("click", (e) => {
-        if(!isDragging && document.getElementById("capsule-wrapper").classList.contains("top-mode")) resetCapsule();
+        // Keeping this listener active to not delete code, but logic inside is modified.
+        console.log("Capsule Bar Clicked - Snapping Disabled");
     });
 }
 
 function dragStart(e) {
-    // FIX: Removed the "if top-mode return" check so user can drag directly from sides!
     isDragging = true;
     startX = e.type.includes("mouse") ? e.clientX : e.touches[0].clientX;
     
     let wheel = document.getElementById("wheel");
     wheel.style.transition = "none";
     
-    // Detect starting offset if it's already slid to left or right
-    if (wheel.classList.contains("drag-left")) dragOffset = -80;
-    else if (wheel.classList.contains("drag-right")) dragOffset = 80;
+    if (wheel.classList.contains("drag-left")) dragOffset = -104;
+    else if (wheel.classList.contains("drag-right")) dragOffset = 104;
     else dragOffset = 0;
     
-    // Remove the classes so we can manually translate it smoothly
     wheel.className = "wheel"; 
     wheel.style.transform = `translateX(calc(-50% + ${dragOffset}px)) rotate(${dragOffset * 3}deg)`;
 }
@@ -382,12 +380,11 @@ function dragMove(e) {
     let deltaX = (e.type.includes("mouse") ? e.clientX : e.touches[0].clientX) - startX;
     let newX = dragOffset + deltaX;
     
-    // The bar is smaller when in top-mode, limit the drag distance accordingly
-    let maxDrag = document.getElementById("capsule-wrapper").classList.contains("top-mode") ? 70 : 100;
+    // FIX: Increased max drag limit so the wheel slides completely to the ends
+    let maxDrag = 104; 
     if(newX < -maxDrag) newX = -maxDrag; 
     if(newX > maxDrag) newX = maxDrag;
     
-    // FIX: Multiply by 3 for realistic wheel rotation effect while dragging!
     document.getElementById("wheel").style.transform = `translateX(calc(-50% + ${newX}px)) rotate(${newX * 3}deg)`;
 }
 
@@ -402,7 +399,7 @@ function dragEnd(e) {
     
     if (finalX < -40) activateCapsuleState('left');
     else if (finalX > 40) activateCapsuleState('right');
-    else resetCapsule(); // Snap back to center
+    else resetCapsule(); 
 }
 
 function activateCapsuleState(direction) {
@@ -410,7 +407,7 @@ function activateCapsuleState(direction) {
     const wrapper = document.getElementById("capsule-wrapper");
     const bar = document.getElementById("capsule-bar");
     
-    wheel.style.transform = `translateX(0)`; // Reset translation as classes will handle layout
+    wheel.style.transform = `translateX(0)`; 
     wrapper.classList.add("top-mode");
 
     if(direction === 'left') {
@@ -439,7 +436,22 @@ function resetCapsule() {
 function openCapsule(ticketId) {
     activeChatTicketId = ticketId;
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
-    document.getElementById("capsule-desc-text").innerText = ticket.issue;
+    
+    // FIX: Add Rich Details UI inside the description box
+    let statusColor = ticket.status === 'Pending' ? '#d97706' : (ticket.status === 'Completed' ? '#16a34a' : '#0284c7');
+    let descHTML = `
+        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${statusColor};">
+            <div style="font-size: 13px; color: #555; margin-bottom: 5px;"><strong>Ticket No:</strong> ${ticket.ticketId}</div>
+            <div style="font-size: 13px; color: #555; margin-bottom: 5px;"><strong>Created On:</strong> ${ticket.date}</div>
+            <div style="font-size: 13px; color: #555;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${ticket.status || 'Pending'}</span></div>
+        </div>
+        <div style="font-size: 14px; color: #333; line-height: 1.6;">
+            <strong>Issue Description:</strong><br>
+            ${escapeHTML(ticket.issue).replace(/\n/g, '<br>')}
+        </div>
+    `;
+    
+    document.getElementById("capsule-desc-text").innerHTML = descHTML;
     
     document.getElementById("capsule-modal").style.display = "flex";
     setTimeout(() => { document.getElementById("capsule-modal").style.opacity = "1"; }, 10);
