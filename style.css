@@ -138,3 +138,21 @@ a:hover { text-decoration: underline; }
 .capsule-chat-input { padding: 12px; background: #fff; display: flex; gap: 8px; border-top: 1px solid #eee; }
 .capsule-chat-input input { margin: 0; flex-grow: 1; border-radius: 20px; padding: 10px 15px; border: 1px solid #ccc; }
 .capsule-chat-input button { margin: 0; width: auto; padding: 8px 18px; border-radius: 20px; }
+
+/* ADMIN CAPSULE DROPDOWN STYLING */
+.capsule-status-select {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.3s ease;
+    font-weight: 500;
+}
+.capsule-status-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0,123,255,0.2);
+}
