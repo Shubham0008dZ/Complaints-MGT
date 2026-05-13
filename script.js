@@ -437,13 +437,32 @@ function openCapsule(ticketId) {
     activeChatTicketId = ticketId;
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
     
-    // FIX: Add Rich Details UI inside the description box
     let statusColor = ticket.status === 'Pending' ? '#d97706' : (ticket.status === 'Completed' ? '#16a34a' : '#0284c7');
+    
+    // NEW FIX: Admin Dropdown injected directly inside the Capsule Modal Description Panel
+    let adminDropdownHTML = "";
+    if (currentUserRole === "Admin") {
+        let s1 = ticket.status == "Pending" ? "selected" : "";
+        let s2 = ticket.status == "In Progress" ? "selected" : "";
+        let s3 = ticket.status == "Completed" ? "selected" : "";
+        adminDropdownHTML = `
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
+                <label style="font-size: 13px; color: #555; font-weight: bold; display: block;">Change Status:</label>
+                <select class="capsule-status-select" onchange="update('${ticket.ticketId}', this.value)">
+                    <option ${s1}>Pending</option>
+                    <option ${s2}>In Progress</option>
+                    <option ${s3}>Completed</option>
+                </select>
+            </div>
+        `;
+    }
+
     let descHTML = `
         <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${statusColor};">
             <div style="font-size: 13px; color: #555; margin-bottom: 5px;"><strong>Ticket No:</strong> ${ticket.ticketId}</div>
             <div style="font-size: 13px; color: #555; margin-bottom: 5px;"><strong>Created On:</strong> ${ticket.date}</div>
             <div style="font-size: 13px; color: #555;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${ticket.status || 'Pending'}</span></div>
+            ${adminDropdownHTML}
         </div>
         <div style="font-size: 14px; color: #333; line-height: 1.6;">
             <strong>Issue Description:</strong><br>
