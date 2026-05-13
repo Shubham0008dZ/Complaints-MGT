@@ -8,6 +8,10 @@ let currentUserPhone = "";
 let allTicketsData = []; 
 let activeChatTicketId = null;
 
+// Routing Variables
+let currentFilter = "All";
+let previousScreen = "view-home"; // Tracks back button
+
 function escapeHTML(str) {
     if (!str) return "";
     return str.toString()
@@ -24,8 +28,12 @@ function getFormattedDateTime() {
     return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+// Updated Show Function to include Home & Dashboard
 function show(id) {
-    ["view-login", "view-reg", "view-reset", "view-emp", "view-adm"].forEach(v => document.getElementById(v).style.display = "none");
+    ["view-login", "view-reg", "view-reset", "view-home", "view-dashboard", "view-emp", "view-adm"].forEach(v => {
+        let el = document.getElementById(v);
+        if(el) el.style.display = "none";
+    });
     document.getElementById(id).style.display = "block";
 }
 
@@ -42,7 +50,7 @@ async function api(data) {
     return fetch(URL, { method: 'POST', body: p }).then(res => res.json());
 }
 
-// Function kept intact to prevent deletion
+// Legacy function kept intact
 function getBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -60,15 +68,18 @@ window.onload = function() {
     if (sessionData) {
         let data = JSON.parse(sessionData);
         user = data.user; currentUserRole = data.role; currentUserName = data.name; currentUserEmail = data.email; currentUserPhone = data.phone;
-        currentUserRole === "Admin" ? show("view-adm") : show("view-emp");
-        loadTickets(currentUserRole);
+        
+        document.getElementById("home-username").innerText = currentUserName;
+        show("view-home"); // Route to Home Screen Instead of Direct Table
+        
+        // Background fetch for faster dashboard
+        fetch(URL).then(r => r.json()).then(data => allTicketsData = data).catch(e=>{});
     } else {
         show("view-login");
     }
-    initCapsuleEvents(); // Initialize Mobile Capsule
+    initCapsuleEvents();
 };
 
-// FIX FOR INSPECT MODE CLOSING (Mobile -> Desktop view switch)
 window.addEventListener('resize', () => {
     if(window.innerWidth > 768 && document.getElementById("capsule-modal").style.display !== "none") {
         closeCapsuleModal();
@@ -78,6 +89,67 @@ window.addEventListener('resize', () => {
 function doLogout() {
     localStorage.removeItem("erp_session"); 
     location.reload(); 
+}
+
+// ----------------------------------------------------------------
+// APP ROUTING & NAVIGATION (NEW FEATURES)
+// ----------------------------------------------------------------
+function openDashboardApp() {
+    previousScreen = "view-home";
+    show("view-dashboard");
+    renderDashboardMetrics(); // Build cards
+}
+
+function openTicketsApp(filter) {
+    currentFilter = filter;
+    previousScreen = filter === "All" ? "view-home" : "view-dashboard"; // Smart routing
+    currentUserRole === "Admin" ? show("view-adm") : show("view-emp");
+    
+    // Update Filter Label
+    let lbl = filter === "All" ? "Showing: All Tickets" : `Showing Filter: ${filter}`;
+    document.getElementById(currentUserRole === "Admin" ? "active-filter-label-adm" : "active-filter-label-emp").innerText = lbl;
+    
+    loadTickets(currentUserRole);
+}
+
+function goBack() {
+    show(previousScreen);
+}
+
+// Metrics Engine
+async function renderDashboardMetrics() {
+    let dashContainer = document.getElementById("dash-metrics");
+    let loader = document.getElementById("dashboard-loading");
+    dashContainer.style.display = "none";
+    loader.style.display = "block";
+
+    try {
+        if(allTicketsData.length === 0) allTicketsData = await fetch(URL).then(r => r.json());
+        
+        let counts = { "All": 0, "Pending": 0, "In Progress": 0, "Testing": 0, "Completed": 0, "Not Feasible": 0 };
+        
+        allTicketsData.forEach(t => {
+            if(currentUserRole === "Admin" || t.empName === currentUserName) {
+                counts["All"]++;
+                let s = t.status || 'Pending';
+                if(counts[s] !== undefined) counts[s]++;
+            }
+        });
+
+        // Generate Interactive App Cards with Specific Colors
+        dashContainer.innerHTML = `
+            <div class="dash-card" style="border-bottom-color: #6b7280;" onclick="openTicketsApp('All')"><h4>Total Raised</h4><div class="count">${counts['All']}</div></div>
+            <div class="dash-card" style="border-bottom-color: #d97706;" onclick="openTicketsApp('Pending')"><h4>Pending</h4><div class="count" style="color:#d97706">${counts['Pending']}</div></div>
+            <div class="dash-card" style="border-bottom-color: #0284c7;" onclick="openTicketsApp('In Progress')"><h4>In Process</h4><div class="count" style="color:#0284c7">${counts['In Progress']}</div></div>
+            <div class="dash-card" style="border-bottom-color: #8b5cf6;" onclick="openTicketsApp('Testing')"><h4>Testing Phase</h4><div class="count" style="color:#8b5cf6">${counts['Testing']}</div></div>
+            <div class="dash-card" style="border-bottom-color: #16a34a;" onclick="openTicketsApp('Completed')"><h4>Completed</h4><div class="count" style="color:#16a34a">${counts['Completed']}</div></div>
+            <div class="dash-card" style="border-bottom-color: #dc2626;" onclick="openTicketsApp('Not Feasible')"><h4>Not Feasible</h4><div class="count" style="color:#dc2626">${counts['Not Feasible']}</div></div>
+        `;
+        loader.style.display = "none";
+        dashContainer.style.display = "grid";
+    } catch(e) {
+        loader.innerHTML = `<span style="color:red">❌ Failed to load metrics.</span>`;
+    }
 }
 
 // ----------------------------------------------------------------
@@ -98,8 +170,10 @@ async function doLogin() {
         } else if (res.status == "success") {
             currentUserRole = res.role.trim(); currentUserName = res.name.trim(); currentUserEmail = res.email; currentUserPhone = res.phone;
             localStorage.setItem("erp_session", JSON.stringify({ user: user, role: currentUserRole, name: currentUserName, email: currentUserEmail, phone: currentUserPhone }));
-            res.role == "Admin" ? show("view-adm") : show("view-emp");
-            loadTickets(res.role);
+            
+            document.getElementById("home-username").innerText = currentUserName;
+            show("view-home"); // Route to Home Apps
+            fetch(URL).then(r => r.json()).then(data => allTicketsData = data).catch(e=>{}); // Prefetch
         } else { alert("Invalid Login Credentials"); }
     } catch (e) { alert("Server Error! Check URL or Internet."); }
     btn.innerText = "Login"; btn.disabled = false;
@@ -206,11 +280,15 @@ async function loadTickets(role) {
         let sno = 1; 
         [...allTicketsData].reverse().forEach(t => {
             if (role == "Admin" || t.empName == currentUserName) {
-                let statusClass = t.status ? "status-" + t.status.split(" ")[0] : "status-Pending";
+                
+                // FILTER LOGIC APPLIED HERE
+                let statusRaw = t.status || 'Pending';
+                if(currentFilter !== "All" && statusRaw !== currentFilter) return;
+
+                let statusClass = "status-" + statusRaw.split(" ")[0]; // Handles Pending, In, Testing, Completed, Not
                 let safeTitle = t.title ? escapeHTML(t.title) : "No Title";
                 let safeIssue = t.issue ? escapeHTML(t.issue) : "";
 
-                // Desktop Read More Triggers
                 let displayTitle = safeTitle.length > 20 
                     ? safeTitle.substring(0, 20) + `... <br><a href="#" onclick="viewFullText('Title', '${t.ticketId}')" class="hide-on-mobile" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
                     : safeTitle;
@@ -228,25 +306,27 @@ async function loadTickets(role) {
                     html += `<td class="hide-on-mobile"><b>${t.empName || '-'}</b><br><span class="small-text">${t.phone || '-'}</span></td>`;
                 }
 
-                // Desktop columns
                 html += `<td class="hide-on-mobile">${displayIssue}</td>
                     <td class="hide-on-mobile"><a href="#" onclick="openChat('${t.ticketId}'); event.stopPropagation();"><b>View Details</b></a></td>
-                    <td class="${statusClass} hide-on-mobile">${t.status || 'Pending'}</td>`;
+                    <td class="${statusClass} hide-on-mobile">${statusRaw}</td>`;
                 
                 if (role == "Admin") {
-                    let s1 = t.status == "Pending" ? "selected" : "";
-                    let s2 = t.status == "In Progress" ? "selected" : "";
-                    let s3 = t.status == "Completed" ? "selected" : "";
+                    let s1 = statusRaw == "Pending" ? "selected" : "";
+                    let s2 = statusRaw == "In Progress" ? "selected" : "";
+                    let s3 = statusRaw == "Testing" ? "selected" : "";
+                    let s4 = statusRaw == "Completed" ? "selected" : "";
+                    let s5 = statusRaw == "Not Feasible" ? "selected" : "";
+                    
                     html += `<td class="hide-on-mobile" onclick="event.stopPropagation()">
-                        <select onchange="update('${t.ticketId}', this.value)">
-                        <option ${s1}>Pending</option><option ${s2}>In Progress</option><option ${s3}>Completed</option>
+                        <select onchange="update('${t.ticketId}', this.value)" style="padding:6px; font-size:12px;">
+                        <option ${s1}>Pending</option><option ${s2}>In Progress</option><option ${s3}>Testing</option><option ${s4}>Completed</option><option ${s5}>Not Feasible</option>
                     </select></td>`;
                 }
                 html += `</tr>`;
             }
         });
 
-        if(sno === 1) html += `<tr><td colspan="${colSpan}" style="text-align:center;">No tickets found.</td></tr>`;
+        if(sno === 1) html += `<tr><td colspan="${colSpan}" style="text-align:center; padding: 20px;">No tickets found matching "${currentFilter}".</td></tr>`;
         document.getElementById(tableId).innerHTML = html;
         
     } catch(e) { 
@@ -262,7 +342,6 @@ async function update(id, s) {
 // ----------------------------------------------------------------
 // ORIGINAL DESKTOP MODAL LOGIC (Intact)
 // ----------------------------------------------------------------
-
 function viewFullText(type, ticketId) {
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
     if(ticket) {
@@ -272,9 +351,7 @@ function viewFullText(type, ticketId) {
     }
 }
 
-function closeIssueModal() {
-    document.getElementById("issue-modal").style.display = "none";
-}
+function closeIssueModal() { document.getElementById("issue-modal").style.display = "none"; }
 
 function openChat(ticketId) {
     activeChatTicketId = ticketId;
@@ -283,25 +360,15 @@ function openChat(ticketId) {
     renderChats();
 }
 
-function closeChat() {
-    document.getElementById("chat-modal").style.display = "none";
-    activeChatTicketId = null;
-}
+function closeChat() { document.getElementById("chat-modal").style.display = "none"; activeChatTicketId = null; }
 
 function renderChats() {
     let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
     let chatBox = document.getElementById("chat-box");
-    
     let isMyTicket = (ticket.empName === currentUserName);
     let originalClass = isMyTicket ? "chat-mine" : "chat-other";
     
-    let html = `
-        <div class="chat-bubble ${originalClass}">
-            <div class="chat-sender">${ticket.empName} (Original Issue)</div>
-            ${escapeHTML(ticket.issue)}
-            <span class="chat-time">${ticket.date}</span>
-        </div>
-    `;
+    let html = `<div class="chat-bubble ${originalClass}"><div class="chat-sender">${ticket.empName} (Original Issue)</div>${escapeHTML(ticket.issue)}<span class="chat-time">${ticket.date}</span></div>`;
 
     if(ticket.chats && ticket.chats !== "[]" && ticket.chats !== "") {
         let chatsArr = JSON.parse(ticket.chats);
@@ -309,7 +376,6 @@ function renderChats() {
             let isMine = (c.senderRole.trim().toLowerCase() === currentUserRole.toLowerCase());
             let bubbleClass = isMine ? "chat-mine" : "chat-other";
             let senderName = (c.senderRole.trim().toLowerCase() === 'admin') ? 'Admin / Support' : ticket.empName;
-            
             html += `<div class="chat-bubble ${bubbleClass}"><div class="chat-sender">${senderName}</div>${escapeHTML(c.msg)}<span class="chat-time">${c.time}</span></div>`;
         });
     }
@@ -334,17 +400,14 @@ async function sendReply() {
 }
 
 // ----------------------------------------------------------------
-// NEW MOBILE CAPSULE LOGIC WITH DIRECT SLIDE & FULL REACH WHEEL
+// MOBILE CAPSULE LOGIC WITH DIRECT SLIDE & FULL REACH WHEEL
 // ----------------------------------------------------------------
-
 let isDragging = false;
 let startX = 0;
 let dragOffset = 0;
 
 function initCapsuleEvents() {
     const wheel = document.getElementById("wheel");
-    const capsuleBar = document.getElementById("capsule-bar");
-
     wheel.addEventListener("touchstart", dragStart, {passive: true});
     window.addEventListener("touchmove", dragMove, {passive: true});
     window.addEventListener("touchend", dragEnd);
@@ -352,18 +415,11 @@ function initCapsuleEvents() {
     wheel.addEventListener("mousedown", dragStart);
     window.addEventListener("mousemove", dragMove);
     window.addEventListener("mouseup", dragEnd);
-
-    // FIX: Removed center-snap behavior on clicking the bar.
-    capsuleBar.addEventListener("click", (e) => {
-        // Keeping this listener active to not delete code, but logic inside is modified.
-        console.log("Capsule Bar Clicked - Snapping Disabled");
-    });
 }
 
 function dragStart(e) {
     isDragging = true;
     startX = e.type.includes("mouse") ? e.clientX : e.touches[0].clientX;
-    
     let wheel = document.getElementById("wheel");
     wheel.style.transition = "none";
     
@@ -380,7 +436,6 @@ function dragMove(e) {
     let deltaX = (e.type.includes("mouse") ? e.clientX : e.touches[0].clientX) - startX;
     let newX = dragOffset + deltaX;
     
-    // FIX: Increased max drag limit so the wheel slides completely to the ends
     let maxDrag = 104; 
     if(newX < -maxDrag) newX = -maxDrag; 
     if(newX > maxDrag) newX = maxDrag;
@@ -437,21 +492,31 @@ function openCapsule(ticketId) {
     activeChatTicketId = ticketId;
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
     
-    let statusColor = ticket.status === 'Pending' ? '#d97706' : (ticket.status === 'Completed' ? '#16a34a' : '#0284c7');
+    let statusRaw = ticket.status || 'Pending';
+    let statusColor = '#d97706'; // Pending default
+    if(statusRaw === 'Completed') statusColor = '#16a34a';
+    else if(statusRaw === 'In Progress') statusColor = '#0284c7';
+    else if(statusRaw === 'Testing') statusColor = '#8b5cf6';
+    else if(statusRaw === 'Not Feasible') statusColor = '#dc2626';
     
-    // NEW FIX: Admin Dropdown injected directly inside the Capsule Modal Description Panel
+    // Admin Dropdown updated with new statuses
     let adminDropdownHTML = "";
     if (currentUserRole === "Admin") {
-        let s1 = ticket.status == "Pending" ? "selected" : "";
-        let s2 = ticket.status == "In Progress" ? "selected" : "";
-        let s3 = ticket.status == "Completed" ? "selected" : "";
+        let s1 = statusRaw == "Pending" ? "selected" : "";
+        let s2 = statusRaw == "In Progress" ? "selected" : "";
+        let s3 = statusRaw == "Testing" ? "selected" : "";
+        let s4 = statusRaw == "Completed" ? "selected" : "";
+        let s5 = statusRaw == "Not Feasible" ? "selected" : "";
+        
         adminDropdownHTML = `
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
                 <label style="font-size: 13px; color: #555; font-weight: bold; display: block;">Change Status:</label>
                 <select class="capsule-status-select" onchange="update('${ticket.ticketId}', this.value)">
                     <option ${s1}>Pending</option>
                     <option ${s2}>In Progress</option>
-                    <option ${s3}>Completed</option>
+                    <option ${s3}>Testing</option>
+                    <option ${s4}>Completed</option>
+                    <option ${s5}>Not Feasible</option>
                 </select>
             </div>
         `;
@@ -461,7 +526,7 @@ function openCapsule(ticketId) {
         <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${statusColor};">
             <div style="font-size: 13px; color: #555; margin-bottom: 5px;"><strong>Ticket No:</strong> ${ticket.ticketId}</div>
             <div style="font-size: 13px; color: #555; margin-bottom: 5px;"><strong>Created On:</strong> ${ticket.date}</div>
-            <div style="font-size: 13px; color: #555;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${ticket.status || 'Pending'}</span></div>
+            <div style="font-size: 13px; color: #555;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusRaw}</span></div>
             ${adminDropdownHTML}
         </div>
         <div style="font-size: 14px; color: #333; line-height: 1.6;">
@@ -471,7 +536,6 @@ function openCapsule(ticketId) {
     `;
     
     document.getElementById("capsule-desc-text").innerHTML = descHTML;
-    
     document.getElementById("capsule-modal").style.display = "flex";
     setTimeout(() => { document.getElementById("capsule-modal").style.opacity = "1"; }, 10);
     resetCapsule();
