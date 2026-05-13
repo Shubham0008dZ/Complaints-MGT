@@ -1,65 +1,61 @@
-/* ORIGINAL CLEAN DESKTOP CSS RESTORED */
+/* GENERAL STYLES */
 * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; }
-body { background: #f4f7f6; display: flex; justify-content: center; padding: 20px 10px; color: #333; overflow-x: hidden; }
+body { background: #f0f2f5; display: flex; justify-content: center; padding: 20px 10px; color: #333; overflow-x: hidden; }
 .container { width: 100%; max-width: 1000px; }
 
-.card { 
-    background: white; 
-    padding: 25px 20px; 
-    border-radius: 10px; 
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
-    margin-bottom: 20px; 
-    text-align: center; 
-}
+.fade-in { animation: fadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.card { background: white; padding: 25px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center; }
+.card-header { background: white; padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
 .card h2, .card h3 { margin-bottom: 15px; color: #111; }
 
-input, select, textarea { 
-    width: 100%; 
-    padding: 14px; 
-    margin: 10px 0; 
-    border: 1px solid #ccc; 
-    border-radius: 6px; 
-    font-size: 16px; 
-    outline: none;
-}
-input:focus, textarea:focus { border-color: #007bff; }
+input, select, textarea { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none; transition: 0.3s;}
+input:focus, textarea:focus { border-color: #007bff; box-shadow: 0 0 5px rgba(0,123,255,0.2);}
 
-button { 
-    width: 100%; 
-    padding: 14px; 
-    background: #007bff; 
-    color: white; 
-    border: none; 
-    border-radius: 6px; 
-    font-size: 16px; 
-    font-weight: bold; 
-    cursor: pointer; 
-    margin-top: 10px; 
-    transition: 0.3s;
-}
-button:hover:not(:disabled) { background: #0056b3; }
+button { width: 100%; padding: 14px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+button:hover:not(:disabled) { background: #0056b3; transform: translateY(-1px);}
 button:disabled { background: #b0c4de; cursor: not-allowed; }
 
 .outline-btn { background: transparent; color: #007bff; border: 2px solid #007bff; }
 .outline-btn:hover:not(:disabled) { background: #f0f8ff; color: #0056b3; }
 .logout-btn { background: #dc3545; width: auto; padding: 8px 15px; margin: 0; font-size: 14px; }
 .logout-btn:hover { background: #c82333; }
+.back-btn { background: transparent; color: #333; font-size: 22px; padding: 0; margin: 0; width: auto; border: none; outline: none; cursor: pointer; }
+.back-btn:hover { transform: scale(1.1); background: transparent; }
 
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.header { display: flex; justify-content: space-between; align-items: center; }
 p { color: #007bff; cursor: pointer; font-size: 14px; margin-top: 15px; font-weight: 500; }
 .small-text { font-size: 12px; color: #666; text-align: left; display: block; margin-top: 5px; }
 
-/* ORIGINAL DESKTOP TABLE CSS */
-.table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
-th, td { border: 1px solid #eee; padding: 12px 10px; text-align: left; font-size: 14px; vertical-align: top;}
-th { background: #f8f9fa; font-weight: bold; }
+/* NEW: APP LAUNCHER & DASHBOARD CSS */
+.app-grid { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; padding: 20px; }
+.app-icon-card { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.3s; width: 100px; }
+.app-icon-card:hover { transform: translateY(-5px); }
+.app-icon { width: 75px; height: 75px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 32px; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.15); margin-bottom: 12px; }
+.app-label { font-size: 14px; font-weight: 600; color: #333; text-align: center; }
+
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; }
+.dash-card { background: #fff; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.06); cursor: pointer; border-bottom: 4px solid transparent; transition: 0.3s; }
+.dash-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+.dash-card h4 { font-size: 13px; color: #666; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.dash-card .count { font-size: 32px; font-weight: bold; color: #111; }
+
+/* TABLE CSS */
+.table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px;}
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
+th, td { border-bottom: 1px solid #f0f0f0; padding: 15px 12px; text-align: left; font-size: 14px; vertical-align: top;}
+th { background: #f8f9fa; font-weight: bold; color: #555; text-transform: uppercase; font-size: 12px;}
+tr:hover { background-color: #fafbfc; }
 a { color: #007bff; text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* Status Colors Updated */
 .status-Pending { color: #d97706; font-weight: bold; }
-.status-Progress { color: #0284c7; font-weight: bold; }
+.status-In { color: #0284c7; font-weight: bold; } /* In Progress */
+.status-Testing { color: #8b5cf6; font-weight: bold; } /* Testing */
 .status-Completed { color: #16a34a; font-weight: bold; }
+.status-Not { color: #dc2626; font-weight: bold; } /* Not Feasible */
 
 /* DESKTOP MODAL CSS */
 .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 10px; }
@@ -67,7 +63,6 @@ a:hover { text-decoration: underline; }
 .modal-header { padding: 15px 20px; background: #007bff; color: white; display: flex; justify-content: space-between; align-items: center; }
 .modal-header h3 { margin: 0; font-size: 16px; }
 .close-btn { font-size: 24px; cursor: pointer; font-weight: bold; line-height: 1; margin-top: -5px; }
-.close-btn:hover { color: #ffcccc; }
 
 .chat-container { padding: 15px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f4f7f6; min-height: 250px; }
 .chat-bubble { padding: 10px 14px; border-radius: 10px; max-width: 80%; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-wrap: break-word; word-wrap: break-word; }
@@ -75,53 +70,30 @@ a:hover { text-decoration: underline; }
 .chat-other { align-self: flex-start; background: #fff; border: 1px solid #e2e8f0; border-bottom-left-radius: 0; }
 .chat-time { display: block; font-size: 10px; color: #888; margin-top: 5px; text-align: right; }
 .chat-sender { font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #007bff; }
-
 .chat-input-area { padding: 15px; background: #fff; display: flex; gap: 10px; border-top: 1px solid #eee; }
-.chat-input-area input { margin: 0; flex-grow: 1; border-radius: 20px; padding: 10px 15px; border: 1px solid #ccc; }
+.chat-input-area input { margin: 0; flex-grow: 1; border-radius: 20px; padding: 10px 15px; }
 .chat-input-area button { margin: 0; width: auto; padding: 10px 20px; border-radius: 20px; }
 
-/* ----------------------------------------------------- */
-/* MOBILE SPECIFIC CSS & CAPSULE UI ISOLATION            */
-/* ----------------------------------------------------- */
+/* MOBILE RESPONSIVE CSS */
 .mobile-tap-hint { display: none; color: #007bff; font-size: 11px; margin-top: 5px; font-weight: 500;}
-
 @media (max-width: 768px) {
     .hide-on-mobile { display: none !important; }
     .mobile-tap-hint { display: block; }
     table { min-width: unset; }
-    td, th { padding: 10px 6px; font-size: 13px; }
+    td, th { padding: 12px 8px; font-size: 13px; }
+    .dash-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* NEW CAPSULE CSS (Only triggered on mobile) */
+/* MOBILE CAPSULE CSS */
 .capsule-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000; display: flex; justify-content: center; align-items: center; transition: opacity 0.3s; }
 .capsule-wrapper { width: 100%; max-width: 400px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); }
 .capsule-wrapper.top-mode { justify-content: flex-start; padding-top: 40px; }
 
 .capsule-bar { width: 260px; height: 56px; background: rgba(20,20,20,0.9); border-radius: 40px; border: 2px solid rgba(255,255,255,0.1); position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 10; cursor: pointer; transition: transform 0.4s ease; }
-.capsule-bar:active { transform: scale(0.97); }
 
-/* UPDATED: REALISTIC WHEEL CSS */
-.wheel { 
-    width: 48px; height: 48px; 
-    background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
-    border-radius: 50%; 
-    border: 2px solid #ccc;
-    position: absolute; top: 2px; left: 50%; 
-    transform: translateX(-50%) rotate(0deg); 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.1); 
-    z-index: 5; cursor: grab; 
-    display: flex; justify-content: center; align-items: center; gap: 4px;
-    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
-}
+.wheel { width: 48px; height: 48px; background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%); border-radius: 50%; border: 2px solid #ccc; position: absolute; top: 2px; left: 50%; transform: translateX(-50%) rotate(0deg); box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.1); z-index: 5; cursor: grab; display: flex; justify-content: center; align-items: center; gap: 4px; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), left 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
 .wheel:active { cursor: grabbing; }
-
-/* The physical grips inside the wheel */
-.wheel-grip { 
-    width: 3px; height: 18px; 
-    background: #999; border-radius: 2px; 
-    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5); 
-}
-
+.wheel-grip { width: 3px; height: 18px; background: #999; border-radius: 2px; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5); }
 .wheel-text { color: #fff; font-size: 12px; font-weight: bold; opacity: 0.5; letter-spacing: 1px; transition: opacity 0.3s; z-index: 1;}
 
 .wheel.drag-left { left: 4px; transform: translateX(0) rotate(-180deg); }
@@ -139,20 +111,5 @@ a:hover { text-decoration: underline; }
 .capsule-chat-input input { margin: 0; flex-grow: 1; border-radius: 20px; padding: 10px 15px; border: 1px solid #ccc; }
 .capsule-chat-input button { margin: 0; width: auto; padding: 8px 18px; border-radius: 20px; }
 
-/* ADMIN CAPSULE DROPDOWN STYLING */
-.capsule-status-select {
-    width: 100%;
-    padding: 10px 12px;
-    margin-top: 6px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 14px;
-    background: #fff;
-    outline: none;
-    transition: border-color 0.3s ease;
-    font-weight: 500;
-}
-.capsule-status-select:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 5px rgba(0,123,255,0.2);
-}
+.capsule-status-select { width: 100%; padding: 10px 12px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: #fff; outline: none; transition: 0.3s ease; font-weight: 500; }
+.capsule-status-select:focus { border-color: #007bff; box-shadow: 0 0 5px rgba(0,123,255,0.2); }
