@@ -8,7 +8,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- LOGIN -->
         <div id="view-login" class="card" style="display:none;">
             <h2>ERP Login</h2>
             <input type="text" id="l-user" placeholder="User ID">
@@ -17,7 +16,6 @@
             <p onclick="show('view-reg')">New User? Register</p>
         </div>
 
-        <!-- REGISTER -->
         <div id="view-reg" class="card" style="display:none">
             <h2>Register</h2>
             <input type="text" id="r-name" placeholder="Full Name *">
@@ -34,7 +32,6 @@
             <p onclick="show('view-login')">Back to Login</p>
         </div>
 
-        <!-- RESET -->
         <div id="view-reset" class="card" style="display:none">
             <h2>Reset Password</h2>
             <p class="small-text">Enter the new password for your account.</p>
@@ -42,17 +39,51 @@
             <button id="btn-reset" onclick="doReset()">Update & Login</button>
         </div>
 
-        <!-- EMPLOYEE DASHBOARD -->
-        <div id="view-emp" style="display:none">
-            <div class="header">
-                <h3 style="margin: 0;">Employee Portal</h3>
-                <div style="display: flex; gap: 10px;">
-                    <button class="outline-btn" style="width:auto; margin:0; padding:8px 15px; font-size:14px;" onclick="toggleTicketForm(true)">+ Add Ticket</button>
-                    <button class="logout-btn" onclick="doLogout()">Logout</button>
+        <div id="view-home" class="fade-in" style="display:none;">
+            <div class="header" style="background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <h3 style="margin: 0; color: #111;">Welcome, <span id="home-username" style="color: #007bff;">User</span></h3>
+                <button class="logout-btn" onclick="doLogout()">Logout</button>
+            </div>
+            
+            <div class="app-grid" style="margin-top: 30px;">
+                <div class="app-icon-card" onclick="openDashboardApp()">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">📊</div>
+                    <div class="app-label">Dashboard</div>
+                </div>
+                <div class="app-icon-card" onclick="openTicketsApp('All')">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #10b981, #059669);">🎫</div>
+                    <div class="app-label">All Tickets</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-dashboard" class="fade-in" style="display:none;">
+            <div class="header" style="background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="back-btn" onclick="goBack()">🔙</button>
+                    <h3 style="margin: 0;">Analytics Dashboard</h3>
                 </div>
             </div>
             
-            <div id="ticket-form-section" class="card" style="display:none;">
+            <div id="dashboard-loading" style="text-align:center; padding: 40px; color:#666;"><b>⏳ Syncing Live Data...</b></div>
+            
+            <div class="dash-grid" id="dash-metrics" style="display:none; margin-top: 20px;">
+                </div>
+        </div>
+
+        <div id="view-emp" class="fade-in" style="display:none">
+            <div class="header card-header">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <button class="back-btn" onclick="goBack()">🔙</button>
+                    <h3 style="margin: 0; font-size:16px;">Employee Portal</h3>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="outline-btn" style="width:auto; margin:0; padding:8px 12px; font-size:13px;" onclick="toggleTicketForm(true)">+ Add Ticket</button>
+                    <button class="logout-btn hide-on-mobile" onclick="doLogout()">Logout</button>
+                </div>
+            </div>
+            
+            <div id="ticket-form-section" class="card fade-in" style="display:none;">
                 <h3>Raise Ticket</h3>
                 <input type="text" id="t-title" placeholder="Ticket Title (Mandatory) *">
                 <textarea id="t-issue" rows="3" placeholder="Describe your issue... *"></textarea>
@@ -62,33 +93,34 @@
                 </div>
             </div>
 
-            <div class="card table-container">
+            <div class="card table-container" style="padding: 10px;">
+                <div id="active-filter-label-emp" style="padding: 10px; font-weight: bold; color: #555; font-size: 14px;">Showing: All Tickets</div>
                 <table id="t-emp"></table>
             </div>
         </div>
 
-        <!-- ADMIN DASHBOARD -->
-        <div id="view-adm" style="display:none">
-            <div class="header">
-                <h3 style="margin: 0;">Admin Panel</h3>
-                <button class="logout-btn" onclick="doLogout()">Logout</button>
+        <div id="view-adm" class="fade-in" style="display:none">
+            <div class="header card-header">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <button class="back-btn" onclick="goBack()">🔙</button>
+                    <h3 style="margin: 0; font-size:16px;">Admin Panel</h3>
+                </div>
+                <button class="logout-btn hide-on-mobile" onclick="doLogout()">Logout</button>
             </div>
-            <div class="card table-container">
+            <div class="card table-container" style="padding: 10px;">
+                <div id="active-filter-label-adm" style="padding: 10px; font-weight: bold; color: #555; font-size: 14px;">Showing: All Tickets</div>
                 <table id="t-adm"></table>
             </div>
         </div>
     </div>
 
-    <!-- ORIGINAL DESKTOP CHAT MODAL -->
     <div id="chat-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="chat-title">Ticket Details</h3>
                 <span class="close-btn" onclick="closeChat()">&times;</span>
             </div>
-            <div id="chat-box" class="chat-container">
-                <!-- Chats will load here -->
-            </div>
+            <div id="chat-box" class="chat-container"></div>
             <div class="chat-input-area">
                 <input type="text" id="chat-msg" placeholder="Type a reply...">
                 <button id="btn-send-reply" onclick="sendReply()">Send</button>
@@ -96,26 +128,21 @@
         </div>
     </div>
 
-    <!-- ORIGINAL DESKTOP READ MORE MODAL -->
     <div id="issue-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="issue-modal-title">Full Details</h3>
                 <span class="close-btn" onclick="closeIssueModal()">&times;</span>
             </div>
-            <div id="full-issue-text" class="chat-container" style="white-space: pre-wrap; font-size: 15px; word-wrap: break-word; line-height: 1.6;">
-                <!-- Poora text yahan aayega -->
-            </div>
+            <div id="full-issue-text" class="chat-container" style="white-space: pre-wrap; font-size: 15px; word-wrap: break-word; line-height: 1.6;"></div>
         </div>
     </div>
 
-    <!-- NEW MOBILE CAPSULE UI (Completely Isolated) -->
     <div id="capsule-modal" class="capsule-overlay" style="display:none; opacity: 0;">
         <div class="capsule-wrapper" id="capsule-wrapper">
             
             <div class="capsule-bar" id="capsule-bar">
                 <span class="wheel-text left-text">Desc</span>
-                <!-- WHEEL LOOK UPDATED WITH 3 GRIPS -->
                 <div class="wheel" id="wheel">
                     <div class="wheel-grip"></div>
                     <div class="wheel-grip"></div>
