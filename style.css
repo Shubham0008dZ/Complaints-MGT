@@ -107,7 +107,7 @@ a:hover { text-decoration: underline; }
     border-radius: 50%; 
     border: 2px solid #ccc;
     position: absolute; top: 2px; left: 50%; 
-    transform: translateX(-50%) rotate(0deg); /* Includes rotation */
+    transform: translateX(-50%) rotate(0deg); 
     box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.1); 
     z-index: 5; cursor: grab; 
     display: flex; justify-content: center; align-items: center; gap: 4px;
@@ -124,7 +124,6 @@ a:hover { text-decoration: underline; }
 
 .wheel-text { color: #fff; font-size: 12px; font-weight: bold; opacity: 0.5; letter-spacing: 1px; transition: opacity 0.3s; z-index: 1;}
 
-/* Updated state rotations to match realistic rolling */
 .wheel.drag-left { left: 4px; transform: translateX(0) rotate(-180deg); }
 .wheel.drag-right { left: calc(100% - 52px); transform: translateX(0) rotate(180deg); }
 .capsule-bar.left-active .left-text { opacity: 1; color: #fff; }
