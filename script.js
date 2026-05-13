@@ -53,7 +53,7 @@ function getBase64(file) {
 }
 
 // ----------------------------------------------------------------
-// SESSION HANDLING
+// SESSION HANDLING & WINDOW RESIZE FIX
 // ----------------------------------------------------------------
 window.onload = function() {
     let sessionData = localStorage.getItem("erp_session");
@@ -67,6 +67,13 @@ window.onload = function() {
     }
     initCapsuleEvents(); // Initialize Mobile Capsule
 };
+
+// FIX FOR INSPECT MODE CLOSING (Mobile -> Desktop view switch)
+window.addEventListener('resize', () => {
+    if(window.innerWidth > 768 && document.getElementById("capsule-modal").style.display !== "none") {
+        closeCapsuleModal();
+    }
+});
 
 function doLogout() {
     localStorage.removeItem("erp_session"); 
@@ -327,11 +334,12 @@ async function sendReply() {
 }
 
 // ----------------------------------------------------------------
-// NEW MOBILE CAPSULE LOGIC (Isolated)
+// NEW MOBILE CAPSULE LOGIC WITH DIRECT SLIDE & SPINNING WHEEL
 // ----------------------------------------------------------------
 
 let isDragging = false;
 let startX = 0;
+let dragOffset = 0; // Tracks if wheel is already at left/right before drag
 
 function initCapsuleEvents() {
     const wheel = document.getElementById("wheel");
@@ -340,6 +348,11 @@ function initCapsuleEvents() {
     wheel.addEventListener("touchstart", dragStart, {passive: true});
     window.addEventListener("touchmove", dragMove, {passive: true});
     window.addEventListener("touchend", dragEnd);
+    
+    // For PC testing if needed
+    wheel.addEventListener("mousedown", dragStart);
+    window.addEventListener("mousemove", dragMove);
+    window.addEventListener("mouseup", dragEnd);
 
     capsuleBar.addEventListener("click", (e) => {
         if(!isDragging && document.getElementById("capsule-wrapper").classList.contains("top-mode")) resetCapsule();
@@ -347,17 +360,35 @@ function initCapsuleEvents() {
 }
 
 function dragStart(e) {
-    if(document.getElementById("capsule-wrapper").classList.contains("top-mode")) return; 
+    // FIX: Removed the "if top-mode return" check so user can drag directly from sides!
     isDragging = true;
-    startX = e.touches[0].clientX;
-    document.getElementById("wheel").style.transition = "none";
+    startX = e.type.includes("mouse") ? e.clientX : e.touches[0].clientX;
+    
+    let wheel = document.getElementById("wheel");
+    wheel.style.transition = "none";
+    
+    // Detect starting offset if it's already slid to left or right
+    if (wheel.classList.contains("drag-left")) dragOffset = -80;
+    else if (wheel.classList.contains("drag-right")) dragOffset = 80;
+    else dragOffset = 0;
+    
+    // Remove the classes so we can manually translate it smoothly
+    wheel.className = "wheel"; 
+    wheel.style.transform = `translateX(calc(-50% + ${dragOffset}px)) rotate(${dragOffset * 3}deg)`;
 }
 
 function dragMove(e) {
     if(!isDragging) return;
-    let deltaX = e.touches[0].clientX - startX;
-    if(deltaX < -100) deltaX = -100; if(deltaX > 100) deltaX = 100;
-    document.getElementById("wheel").style.transform = `translateX(calc(-50% + ${deltaX}px))`;
+    let deltaX = (e.type.includes("mouse") ? e.clientX : e.touches[0].clientX) - startX;
+    let newX = dragOffset + deltaX;
+    
+    // The bar is smaller when in top-mode, limit the drag distance accordingly
+    let maxDrag = document.getElementById("capsule-wrapper").classList.contains("top-mode") ? 70 : 100;
+    if(newX < -maxDrag) newX = -maxDrag; 
+    if(newX > maxDrag) newX = maxDrag;
+    
+    // FIX: Multiply by 3 for realistic wheel rotation effect while dragging!
+    document.getElementById("wheel").style.transform = `translateX(calc(-50% + ${newX}px)) rotate(${newX * 3}deg)`;
 }
 
 function dragEnd(e) {
@@ -366,10 +397,12 @@ function dragEnd(e) {
     let wheel = document.getElementById("wheel");
     wheel.style.transition = "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), left 0.4s cubic-bezier(0.25, 1, 0.5, 1)";
     
-    let deltaX = e.changedTouches[0].clientX - startX;
-    if (deltaX < -50) activateCapsuleState('left');
-    else if (deltaX > 50) activateCapsuleState('right');
-    else wheel.style.transform = `translateX(-50%)`;
+    let deltaX = (e.type.includes("mouse") ? e.clientX : e.changedTouches[0].clientX) - startX;
+    let finalX = dragOffset + deltaX;
+    
+    if (finalX < -40) activateCapsuleState('left');
+    else if (finalX > 40) activateCapsuleState('right');
+    else resetCapsule(); // Snap back to center
 }
 
 function activateCapsuleState(direction) {
@@ -377,15 +410,17 @@ function activateCapsuleState(direction) {
     const wrapper = document.getElementById("capsule-wrapper");
     const bar = document.getElementById("capsule-bar");
     
-    wheel.style.transform = `translateX(0)`;
+    wheel.style.transform = `translateX(0)`; // Reset translation as classes will handle layout
     wrapper.classList.add("top-mode");
 
     if(direction === 'left') {
-        wheel.className = "wheel drag-left"; bar.className = "capsule-bar left-active";
+        wheel.className = "wheel drag-left"; 
+        bar.className = "capsule-bar left-active";
         document.getElementById("capsule-content-desc").classList.add("active");
         document.getElementById("capsule-content-chat").classList.remove("active");
     } else {
-        wheel.className = "wheel drag-right"; bar.className = "capsule-bar right-active";
+        wheel.className = "wheel drag-right"; 
+        bar.className = "capsule-bar right-active";
         document.getElementById("capsule-content-chat").classList.add("active");
         document.getElementById("capsule-content-desc").classList.remove("active");
         renderCapsuleChats(); 
@@ -394,7 +429,7 @@ function activateCapsuleState(direction) {
 
 function resetCapsule() {
     document.getElementById("wheel").className = "wheel";
-    document.getElementById("wheel").style.transform = `translateX(-50%)`;
+    document.getElementById("wheel").style.transform = `translateX(-50%) rotate(0deg)`;
     document.getElementById("capsule-bar").className = "capsule-bar";
     document.getElementById("capsule-wrapper").classList.remove("top-mode");
     document.getElementById("capsule-content-desc").classList.remove("active");
