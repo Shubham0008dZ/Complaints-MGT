@@ -8,7 +8,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- LOGIN -->
         <div id="view-login" class="card" style="display:none;">
             <h2>ERP Login</h2>
             <input type="text" id="l-user" placeholder="User ID">
@@ -17,7 +16,6 @@
             <p onclick="show('view-reg')">New User? Register</p>
         </div>
 
-        <!-- REGISTER -->
         <div id="view-reg" class="card" style="display:none">
             <h2>Register</h2>
             <input type="text" id="r-name" placeholder="Full Name *">
@@ -34,7 +32,6 @@
             <p onclick="show('view-login')">Back to Login</p>
         </div>
 
-        <!-- RESET -->
         <div id="view-reset" class="card" style="display:none">
             <h2>Reset Password</h2>
             <p class="small-text">Enter the new password for your account.</p>
@@ -42,10 +39,9 @@
             <button id="btn-reset" onclick="doReset()">Update & Login</button>
         </div>
 
-        <!-- EMPLOYEE DASHBOARD -->
         <div id="view-emp" style="display:none">
             <div class="header">
-                <h3 style="margin: 0;">Employee Portal</h3>
+                <h3>Employee Portal</h3>
                 <div style="display: flex; gap: 10px;">
                     <button class="outline-btn" style="width:auto; margin:0; padding:8px 15px; font-size:14px;" onclick="toggleTicketForm(true)">+ Add Ticket</button>
                     <button class="logout-btn" onclick="doLogout()">Logout</button>
@@ -54,7 +50,6 @@
             
             <div id="ticket-form-section" class="card" style="display:none;">
                 <h3>Raise Ticket</h3>
-                <!-- Title Field Added, Attachment Removed -->
                 <input type="text" id="t-title" placeholder="Ticket Title (Mandatory) *">
                 <textarea id="t-issue" rows="4" placeholder="Describe your issue... *"></textarea>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -68,10 +63,9 @@
             </div>
         </div>
 
-        <!-- ADMIN DASHBOARD -->
         <div id="view-adm" style="display:none">
             <div class="header">
-                <h3 style="margin: 0;">Admin Panel</h3>
+                <h3>Admin Panel</h3>
                 <button class="logout-btn" onclick="doLogout()">Logout</button>
             </div>
             <div class="card table-container">
@@ -80,40 +74,31 @@
         </div>
     </div>
 
-    <!-- NEW INTERACTIVE CAPSULE WHEEL UI -->
-    <div id="capsule-modal" class="modal" style="display:none; opacity: 0; transition: opacity 0.4s ease;">
-        <div class="capsule-container" id="capsule-container">
-            <!-- The Wheel Bar -->
-            <div class="capsule-bar" id="capsule-bar">
-                <span class="wheel-text left-text">Desc</span>
-                <div class="wheel" id="wheel">
-                    <div class="wheel-grip"></div>
-                </div>
-                <span class="wheel-text right-text">Chat</span>
-            </div>
+    <div id="capsule-modal" class="modal-overlay" style="display:none;">
+        <div class="capsule-wrapper" id="capsule-wrapper">
             
-            <!-- Description Content -->
-            <div class="capsule-content desc-box" id="capsule-content-desc">
-                <div class="modal-header" style="border-radius: 8px 8px 0 0;">
-                    <h3>Ticket Description</h3>
+            <div class="wheel-bar" id="wheel-bar">
+                <span class="side-label">Desc</span>
+                <div class="dragger-wheel" id="dragger-wheel">
+                    <div class="grip"></div>
                 </div>
-                <div id="full-issue-text" class="chat-container" style="white-space: pre-wrap; font-size: 15px; word-wrap: break-word; line-height: 1.6; background: #fff;">
-                </div>
+                <span class="side-label">Chat</span>
             </div>
 
-            <!-- Chat Content -->
-            <div class="capsule-content chat-box" id="capsule-content-chat">
-                <div class="modal-header" style="border-radius: 8px 8px 0 0;">
-                    <h3 id="chat-title">Communication</h3>
-                </div>
-                <div id="chat-box" class="chat-container" style="background: #f4f7f6;">
-                    <!-- Chats will load here -->
-                </div>
-                <div class="chat-input-area">
-                    <input type="text" id="chat-msg" placeholder="Type a reply...">
+            <div class="sliding-panel" id="panel-desc">
+                <div class="panel-header">Ticket Description <span class="close-x" onclick="closeCapsule()">×</span></div>
+                <div id="full-issue-text" class="panel-body"></div>
+            </div>
+
+            <div class="sliding-panel" id="panel-chat">
+                <div class="panel-header">Communication <span class="close-x" onclick="closeCapsule()">×</span></div>
+                <div id="chat-box" class="panel-body chat-bg"></div>
+                <div class="chat-footer">
+                    <input type="text" id="chat-msg" placeholder="Type a message...">
                     <button id="btn-send-reply" onclick="sendReply()">Send</button>
                 </div>
             </div>
+
         </div>
     </div>
 
