@@ -100,12 +100,33 @@ a:hover { text-decoration: underline; }
 .capsule-bar { width: 260px; height: 56px; background: rgba(20,20,20,0.9); border-radius: 40px; border: 2px solid rgba(255,255,255,0.1); position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 10; cursor: pointer; transition: transform 0.4s ease; }
 .capsule-bar:active { transform: scale(0.97); }
 
-.wheel { width: 48px; height: 48px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 5; cursor: grab; display: flex; justify-content: center; align-items: center; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), left 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
-.wheel-grip { width: 4px; height: 14px; background: #ddd; border-radius: 2px; }
+/* UPDATED: REALISTIC WHEEL CSS */
+.wheel { 
+    width: 48px; height: 48px; 
+    background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+    border-radius: 50%; 
+    border: 2px solid #ccc;
+    position: absolute; top: 2px; left: 50%; 
+    transform: translateX(-50%) rotate(0deg); /* Includes rotation */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.1); 
+    z-index: 5; cursor: grab; 
+    display: flex; justify-content: center; align-items: center; gap: 4px;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), left 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+}
+.wheel:active { cursor: grabbing; }
+
+/* The physical grips inside the wheel */
+.wheel-grip { 
+    width: 3px; height: 18px; 
+    background: #999; border-radius: 2px; 
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5); 
+}
+
 .wheel-text { color: #fff; font-size: 12px; font-weight: bold; opacity: 0.5; letter-spacing: 1px; transition: opacity 0.3s; z-index: 1;}
 
-.wheel.drag-left { left: 4px; transform: translateX(0); }
-.wheel.drag-right { left: calc(100% - 52px); transform: translateX(0); }
+/* Updated state rotations to match realistic rolling */
+.wheel.drag-left { left: 4px; transform: translateX(0) rotate(-180deg); }
+.wheel.drag-right { left: calc(100% - 52px); transform: translateX(0) rotate(180deg); }
 .capsule-bar.left-active .left-text { opacity: 1; color: #fff; }
 .capsule-bar.right-active .right-text { opacity: 1; color: #fff; }
 
