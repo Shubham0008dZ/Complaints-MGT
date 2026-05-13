@@ -8,9 +8,11 @@ let currentUserPhone = "";
 let allTicketsData = []; 
 let activeChatTicketId = null;
 
-// Routing Variables
+// Routing & Sync Variables
 let currentFilter = "All";
-let previousScreen = "view-home"; // Tracks back button
+let previousScreen = "view-home"; 
+let syncInterval = null; 
+let lastDataHash = ""; 
 
 function escapeHTML(str) {
     if (!str) return "";
@@ -28,7 +30,6 @@ function getFormattedDateTime() {
     return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-// Updated Show Function to include Home & Dashboard
 function show(id) {
     ["view-login", "view-reg", "view-reset", "view-home", "view-dashboard", "view-emp", "view-adm"].forEach(v => {
         let el = document.getElementById(v);
@@ -61,6 +62,36 @@ function getBase64(file) {
 }
 
 // ----------------------------------------------------------------
+// REAL-TIME POLLING & BACKGROUND SYNC (NEW FAST SYSTEM)
+// ----------------------------------------------------------------
+function startBackgroundSync() {
+    if (syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(silentSync, 4000); // Checks for new messages every 4 seconds silently
+}
+
+async function silentSync() {
+    if (!user) return; 
+    try {
+        let newData = await fetch(URL).then(r => r.json());
+        let newHash = JSON.stringify(newData);
+        
+        // Sirf tabhi screen update karo jab actually koi naya message ya ticket aaya ho
+        if (newHash !== lastDataHash) {
+            allTicketsData = newData;
+            lastDataHash = newHash;
+            
+            if(document.getElementById("view-dashboard").style.display === "block") renderDashboardMetrics(true);
+            if(document.getElementById("view-emp").style.display === "block" || document.getElementById("view-adm").style.display === "block") loadTickets(currentUserRole, true);
+            
+            if(activeChatTicketId) {
+                if(document.getElementById("chat-modal").style.display === "flex") renderChats();
+                if(document.getElementById("capsule-modal").style.display !== "none") renderCapsuleChats();
+            }
+        }
+    } catch(e) { console.log("Background sync paused due to network."); }
+}
+
+// ----------------------------------------------------------------
 // SESSION HANDLING & WINDOW RESIZE FIX
 // ----------------------------------------------------------------
 window.onload = function() {
@@ -70,10 +101,14 @@ window.onload = function() {
         user = data.user; currentUserRole = data.role; currentUserName = data.name; currentUserEmail = data.email; currentUserPhone = data.phone;
         
         document.getElementById("home-username").innerText = currentUserName;
-        show("view-home"); // Route to Home Screen Instead of Direct Table
+        show("view-home"); 
         
-        // Background fetch for faster dashboard
-        fetch(URL).then(r => r.json()).then(data => allTicketsData = data).catch(e=>{});
+        // Initial fast load & start auto-refresh
+        fetch(URL).then(r => r.json()).then(data => {
+            allTicketsData = data; 
+            lastDataHash = JSON.stringify(data);
+            startBackgroundSync();
+        }).catch(e=>{});
     } else {
         show("view-login");
     }
@@ -87,44 +122,48 @@ window.addEventListener('resize', () => {
 });
 
 function doLogout() {
+    if(syncInterval) clearInterval(syncInterval);
     localStorage.removeItem("erp_session"); 
     location.reload(); 
 }
 
 // ----------------------------------------------------------------
-// APP ROUTING & NAVIGATION (NEW FEATURES)
+// APP ROUTING & NAVIGATION
 // ----------------------------------------------------------------
 function openDashboardApp() {
     previousScreen = "view-home";
     show("view-dashboard");
-    renderDashboardMetrics(); // Build cards
+    renderDashboardMetrics(false); 
 }
 
 function openTicketsApp(filter) {
     currentFilter = filter;
-    previousScreen = filter === "All" ? "view-home" : "view-dashboard"; // Smart routing
+    previousScreen = filter === "All" ? "view-home" : "view-dashboard"; 
     currentUserRole === "Admin" ? show("view-adm") : show("view-emp");
     
-    // Update Filter Label
     let lbl = filter === "All" ? "Showing: All Tickets" : `Showing Filter: ${filter}`;
     document.getElementById(currentUserRole === "Admin" ? "active-filter-label-adm" : "active-filter-label-emp").innerText = lbl;
     
-    loadTickets(currentUserRole);
+    loadTickets(currentUserRole, false);
 }
 
-function goBack() {
-    show(previousScreen);
-}
+function goBack() { show(previousScreen); }
 
-// Metrics Engine
-async function renderDashboardMetrics() {
+// Metrics Engine (Now supports silent re-rendering)
+async function renderDashboardMetrics(isSilent = false) {
     let dashContainer = document.getElementById("dash-metrics");
     let loader = document.getElementById("dashboard-loading");
-    dashContainer.style.display = "none";
-    loader.style.display = "block";
+    
+    if(!isSilent) {
+        dashContainer.style.display = "none";
+        loader.style.display = "block";
+    }
 
     try {
-        if(allTicketsData.length === 0) allTicketsData = await fetch(URL).then(r => r.json());
+        if(allTicketsData.length === 0) {
+            allTicketsData = await fetch(URL).then(r => r.json());
+            lastDataHash = JSON.stringify(allTicketsData);
+        }
         
         let counts = { "All": 0, "Pending": 0, "In Progress": 0, "Testing": 0, "Completed": 0, "Not Feasible": 0 };
         
@@ -136,7 +175,6 @@ async function renderDashboardMetrics() {
             }
         });
 
-        // Generate Interactive App Cards with Specific Colors
         dashContainer.innerHTML = `
             <div class="dash-card" style="border-bottom-color: #6b7280;" onclick="openTicketsApp('All')"><h4>Total Raised</h4><div class="count">${counts['All']}</div></div>
             <div class="dash-card" style="border-bottom-color: #d97706;" onclick="openTicketsApp('Pending')"><h4>Pending</h4><div class="count" style="color:#d97706">${counts['Pending']}</div></div>
@@ -148,7 +186,7 @@ async function renderDashboardMetrics() {
         loader.style.display = "none";
         dashContainer.style.display = "grid";
     } catch(e) {
-        loader.innerHTML = `<span style="color:red">❌ Failed to load metrics.</span>`;
+        if(!isSilent) loader.innerHTML = `<span style="color:red">❌ Failed to load metrics.</span>`;
     }
 }
 
@@ -172,8 +210,14 @@ async function doLogin() {
             localStorage.setItem("erp_session", JSON.stringify({ user: user, role: currentUserRole, name: currentUserName, email: currentUserEmail, phone: currentUserPhone }));
             
             document.getElementById("home-username").innerText = currentUserName;
-            show("view-home"); // Route to Home Apps
-            fetch(URL).then(r => r.json()).then(data => allTicketsData = data).catch(e=>{}); // Prefetch
+            show("view-home"); 
+            
+            // Fast Background Load
+            fetch(URL).then(r => r.json()).then(data => {
+                allTicketsData = data;
+                lastDataHash = JSON.stringify(data);
+                startBackgroundSync();
+            }).catch(e=>{});
         } else { alert("Invalid Login Credentials"); }
     } catch (e) { alert("Server Error! Check URL or Internet."); }
     btn.innerText = "Login"; btn.disabled = false;
@@ -235,6 +279,8 @@ async function addTicket() {
     
     let btn = document.getElementById("btn-submit-ticket");
     let d = getFormattedDateTime();
+    
+    // Optimistic Table Row
     let table = document.getElementById("t-emp");
     let currentRows = table.getElementsByTagName("tr").length;
     let tempSno = currentRows > 1 && !table.innerHTML.includes("Loading") && !table.innerHTML.includes("No tickets") ? currentRows : 1; 
@@ -257,90 +303,96 @@ async function addTicket() {
     let payload = { action: "createTicket", empName: currentUserName, email: currentUserEmail, phone: currentUserPhone, issue: issue, title: title, date: d };
 
     try {
-        let res = await api(payload);
-        if(res.status == "success") loadTickets("Employee"); 
-        else alert("Error saving ticket.");
-    } catch(e) { alert("Upload failed."); loadTickets("Employee"); }
+        await api(payload);
+        silentSync(); // Forces an immediate background sync instead of blocking UI
+    } catch(e) { alert("Upload failed."); }
     btn.innerText = "Submit Ticket"; btn.disabled = false;
 }
 
-async function loadTickets(role) {
+// Updated loadTickets to support silent rendering without loader
+async function loadTickets(role, isSilent = false) {
     let tableId = role == "Admin" ? "t-adm" : "t-emp";
     let colSpan = role == 'Admin' ? 7 : 6;
     
-    document.getElementById(tableId).innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center; padding: 30px; font-size: 16px; color: #555;"><b>⏳ Loading your tickets... Please wait.</b></td></tr>`;
-
-    try {
-        allTicketsData = await fetch(URL).then(r => r.json());
-        
-        let html = `<tr><th>S.No.</th><th>ID & Date</th><th>Title</th>`;
-        if(role == "Admin") html += `<th class="hide-on-mobile">User Info</th>`;
-        html += `<th class="hide-on-mobile">Issue</th><th class="hide-on-mobile">Details</th><th class="hide-on-mobile">Status</th>${role == "Admin" ? "<th class='hide-on-mobile'>Action</th>" : ""}</tr>`;
-        
-        let sno = 1; 
-        [...allTicketsData].reverse().forEach(t => {
-            if (role == "Admin" || t.empName == currentUserName) {
-                
-                // FILTER LOGIC APPLIED HERE
-                let statusRaw = t.status || 'Pending';
-                if(currentFilter !== "All" && statusRaw !== currentFilter) return;
-
-                let statusClass = "status-" + statusRaw.split(" ")[0]; // Handles Pending, In, Testing, Completed, Not
-                let safeTitle = t.title ? escapeHTML(t.title) : "No Title";
-                let safeIssue = t.issue ? escapeHTML(t.issue) : "";
-
-                let displayTitle = safeTitle.length > 20 
-                    ? safeTitle.substring(0, 20) + `... <br><a href="#" onclick="viewFullText('Title', '${t.ticketId}')" class="hide-on-mobile" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
-                    : safeTitle;
-
-                let displayIssue = safeIssue.length > 40 
-                    ? safeIssue.substring(0, 40) + `... <br><a href="#" onclick="viewFullText('Issue', '${t.ticketId}')" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
-                    : safeIssue;
-
-                html += `<tr onclick="if(window.innerWidth <= 768) openCapsule('${t.ticketId}')" style="cursor: pointer;">
-                    <td>${sno++}</td>
-                    <td><b>${t.ticketId}</b><br><span class="small-text">${t.date}</span></td>
-                    <td>${displayTitle}<div class="mobile-tap-hint">Tap to view</div></td>`;
-                
-                if(role == "Admin") {
-                    html += `<td class="hide-on-mobile"><b>${t.empName || '-'}</b><br><span class="small-text">${t.phone || '-'}</span></td>`;
-                }
-
-                html += `<td class="hide-on-mobile">${displayIssue}</td>
-                    <td class="hide-on-mobile"><a href="#" onclick="openChat('${t.ticketId}'); event.stopPropagation();"><b>View Details</b></a></td>
-                    <td class="${statusClass} hide-on-mobile">${statusRaw}</td>`;
-                
-                if (role == "Admin") {
-                    let s1 = statusRaw == "Pending" ? "selected" : "";
-                    let s2 = statusRaw == "In Progress" ? "selected" : "";
-                    let s3 = statusRaw == "Testing" ? "selected" : "";
-                    let s4 = statusRaw == "Completed" ? "selected" : "";
-                    let s5 = statusRaw == "Not Feasible" ? "selected" : "";
-                    
-                    html += `<td class="hide-on-mobile" onclick="event.stopPropagation()">
-                        <select onchange="update('${t.ticketId}', this.value)" style="padding:6px; font-size:12px;">
-                        <option ${s1}>Pending</option><option ${s2}>In Progress</option><option ${s3}>Testing</option><option ${s4}>Completed</option><option ${s5}>Not Feasible</option>
-                    </select></td>`;
-                }
-                html += `</tr>`;
-            }
-        });
-
-        if(sno === 1) html += `<tr><td colspan="${colSpan}" style="text-align:center; padding: 20px;">No tickets found matching "${currentFilter}".</td></tr>`;
-        document.getElementById(tableId).innerHTML = html;
-        
-    } catch(e) { 
-        document.getElementById(tableId).innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center; padding: 30px; font-size: 16px; color: red;"><b>❌ Error loading tickets. Check internet or refresh.</b></td></tr>`;
+    if(!isSilent) {
+        document.getElementById(tableId).innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center; padding: 30px; font-size: 16px; color: #555;"><b>⏳ Loading your tickets... Please wait.</b></td></tr>`;
+        try {
+            allTicketsData = await fetch(URL).then(r => r.json());
+            lastDataHash = JSON.stringify(allTicketsData);
+        } catch(e) { 
+            document.getElementById(tableId).innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center; padding: 30px; color: red;"><b>❌ Error loading tickets. Check internet.</b></td></tr>`;
+            return;
+        }
     }
+
+    let html = `<tr><th>S.No.</th><th>ID & Date</th><th>Title</th>`;
+    if(role == "Admin") html += `<th class="hide-on-mobile">User Info</th>`;
+    html += `<th class="hide-on-mobile">Issue</th><th class="hide-on-mobile">Details</th><th class="hide-on-mobile">Status</th>${role == "Admin" ? "<th class='hide-on-mobile'>Action</th>" : ""}</tr>`;
+    
+    let sno = 1; 
+    [...allTicketsData].reverse().forEach(t => {
+        if (role == "Admin" || t.empName == currentUserName) {
+            
+            let statusRaw = t.status || 'Pending';
+            if(currentFilter !== "All" && statusRaw !== currentFilter) return;
+
+            let statusClass = "status-" + statusRaw.split(" ")[0]; 
+            let safeTitle = t.title ? escapeHTML(t.title) : "No Title";
+            let safeIssue = t.issue ? escapeHTML(t.issue) : "";
+
+            let displayTitle = safeTitle.length > 20 
+                ? safeTitle.substring(0, 20) + `... <br><a href="#" onclick="viewFullText('Title', '${t.ticketId}')" class="hide-on-mobile" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
+                : safeTitle;
+
+            let displayIssue = safeIssue.length > 40 
+                ? safeIssue.substring(0, 40) + `... <br><a href="#" onclick="viewFullText('Issue', '${t.ticketId}')" style="color:#0284c7; font-weight:bold; font-size:12px; margin-top:5px; display:inline-block;">Read More</a>` 
+                : safeIssue;
+
+            html += `<tr onclick="if(window.innerWidth <= 768) openCapsule('${t.ticketId}')" style="cursor: pointer;">
+                <td>${sno++}</td>
+                <td><b>${t.ticketId}</b><br><span class="small-text">${t.date}</span></td>
+                <td>${displayTitle}<div class="mobile-tap-hint">Tap to view</div></td>`;
+            
+            if(role == "Admin") {
+                html += `<td class="hide-on-mobile"><b>${t.empName || '-'}</b><br><span class="small-text">${t.phone || '-'}</span></td>`;
+            }
+
+            html += `<td class="hide-on-mobile">${displayIssue}</td>
+                <td class="hide-on-mobile"><a href="#" onclick="openChat('${t.ticketId}'); event.stopPropagation();"><b>View Details</b></a></td>
+                <td class="${statusClass} hide-on-mobile">${statusRaw}</td>`;
+            
+            if (role == "Admin") {
+                let s1 = statusRaw == "Pending" ? "selected" : "";
+                let s2 = statusRaw == "In Progress" ? "selected" : "";
+                let s3 = statusRaw == "Testing" ? "selected" : "";
+                let s4 = statusRaw == "Completed" ? "selected" : "";
+                let s5 = statusRaw == "Not Feasible" ? "selected" : "";
+                
+                html += `<td class="hide-on-mobile" onclick="event.stopPropagation()">
+                    <select onchange="updateOptimistic('${t.ticketId}', this.value)" style="padding:6px; font-size:12px;">
+                    <option ${s1}>Pending</option><option ${s2}>In Progress</option><option ${s3}>Testing</option><option ${s4}>Completed</option><option ${s5}>Not Feasible</option>
+                </select></td>`;
+            }
+            html += `</tr>`;
+        }
+    });
+
+    if(sno === 1) html += `<tr><td colspan="${colSpan}" style="text-align:center; padding: 20px;">No tickets found matching "${currentFilter}".</td></tr>`;
+    document.getElementById(tableId).innerHTML = html;
 }
 
-async function update(id, s) {
-    api({ action: "updateStatus", ticketId: id, newStatus: s });
-    setTimeout(() => loadTickets("Admin"), 1000); 
+// Instant Status Update
+async function updateOptimistic(id, s) {
+    let t = allTicketsData.find(x => x.ticketId === id);
+    if(t) t.status = s; // Change locally immediately
+    loadTickets("Admin", true); // Re-render table silently
+    api({ action: "updateStatus", ticketId: id, newStatus: s }); // Sync background
 }
+// Legacy reference kept
+async function update(id, s) { updateOptimistic(id, s); } 
 
 // ----------------------------------------------------------------
-// ORIGINAL DESKTOP MODAL LOGIC (Intact)
+// ORIGINAL DESKTOP MODAL LOGIC 
 // ----------------------------------------------------------------
 function viewFullText(type, ticketId) {
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
@@ -364,6 +416,7 @@ function closeChat() { document.getElementById("chat-modal").style.display = "no
 
 function renderChats() {
     let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
+    if(!ticket) return;
     let chatBox = document.getElementById("chat-box");
     let isMyTicket = (ticket.empName === currentUserName);
     let originalClass = isMyTicket ? "chat-mine" : "chat-other";
@@ -383,63 +436,56 @@ function renderChats() {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// Desktop Optimistic Send
 async function sendReply() {
     let msgInput = document.getElementById("chat-msg"); let msg = msgInput.value.trim(); if(!msg) return;
-    let btn = document.getElementById("btn-send-reply"); btn.innerText = "..."; btn.disabled = true;
+    let btn = document.getElementById("btn-send-reply"); btn.disabled = true;
     let d = getFormattedDateTime();
-    let chatBox = document.getElementById("chat-box");
     
-    chatBox.innerHTML += `<div class="chat-bubble chat-mine" style="opacity:0.7;"><div class="chat-sender">Sending...</div>${escapeHTML(msg)}<span class="chat-time">${d}</span></div>`;
-    chatBox.scrollTop = chatBox.scrollHeight; msgInput.value = "";
+    // FAST UI UPDATE (OPTIMISTIC)
+    let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
+    let chatsArr = ticket.chats && ticket.chats !== "[]" ? JSON.parse(ticket.chats) : [];
+    chatsArr.push({ senderRole: currentUserRole, msg: msg, time: d });
+    ticket.chats = JSON.stringify(chatsArr);
+    
+    msgInput.value = "";
+    renderChats(); // Dikh gaya turant!
 
-    try {
-        await api({ action: "addReply", ticketId: activeChatTicketId, senderRole: currentUserRole, msg: msg, time: d });
-        await loadTickets(currentUserRole); if(activeChatTicketId) renderChats(); 
-    } catch(e) { alert("Failed to send reply"); }
-    btn.innerText = "Send"; btn.disabled = false;
+    // FIRE API IN BACKGROUND
+    api({ action: "addReply", ticketId: activeChatTicketId, senderRole: currentUserRole, msg: msg, time: d })
+    .then(() => { btn.disabled = false; silentSync(); })
+    .catch(() => { btn.disabled = false; });
 }
 
 // ----------------------------------------------------------------
-// MOBILE CAPSULE LOGIC WITH DIRECT SLIDE & FULL REACH WHEEL
+// MOBILE CAPSULE LOGIC
 // ----------------------------------------------------------------
-let isDragging = false;
-let startX = 0;
-let dragOffset = 0;
+let isDragging = false; let startX = 0; let dragOffset = 0;
 
 function initCapsuleEvents() {
     const wheel = document.getElementById("wheel");
     wheel.addEventListener("touchstart", dragStart, {passive: true});
     window.addEventListener("touchmove", dragMove, {passive: true});
     window.addEventListener("touchend", dragEnd);
-    
     wheel.addEventListener("mousedown", dragStart);
     window.addEventListener("mousemove", dragMove);
     window.addEventListener("mouseup", dragEnd);
 }
 
 function dragStart(e) {
-    isDragging = true;
-    startX = e.type.includes("mouse") ? e.clientX : e.touches[0].clientX;
-    let wheel = document.getElementById("wheel");
-    wheel.style.transition = "none";
-    
+    isDragging = true; startX = e.type.includes("mouse") ? e.clientX : e.touches[0].clientX;
+    let wheel = document.getElementById("wheel"); wheel.style.transition = "none";
     if (wheel.classList.contains("drag-left")) dragOffset = -104;
     else if (wheel.classList.contains("drag-right")) dragOffset = 104;
     else dragOffset = 0;
-    
     wheel.className = "wheel"; 
     wheel.style.transform = `translateX(calc(-50% + ${dragOffset}px)) rotate(${dragOffset * 3}deg)`;
 }
 
 function dragMove(e) {
     if(!isDragging) return;
-    let deltaX = (e.type.includes("mouse") ? e.clientX : e.touches[0].clientX) - startX;
-    let newX = dragOffset + deltaX;
-    
-    let maxDrag = 104; 
-    if(newX < -maxDrag) newX = -maxDrag; 
-    if(newX > maxDrag) newX = maxDrag;
-    
+    let newX = dragOffset + ((e.type.includes("mouse") ? e.clientX : e.touches[0].clientX) - startX);
+    let maxDrag = 104; if(newX < -maxDrag) newX = -maxDrag; if(newX > maxDrag) newX = maxDrag;
     document.getElementById("wheel").style.transform = `translateX(calc(-50% + ${newX}px)) rotate(${newX * 3}deg)`;
 }
 
@@ -448,75 +494,49 @@ function dragEnd(e) {
     isDragging = false;
     let wheel = document.getElementById("wheel");
     wheel.style.transition = "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), left 0.4s cubic-bezier(0.25, 1, 0.5, 1)";
-    
-    let deltaX = (e.type.includes("mouse") ? e.clientX : e.changedTouches[0].clientX) - startX;
-    let finalX = dragOffset + deltaX;
-    
-    if (finalX < -40) activateCapsuleState('left');
-    else if (finalX > 40) activateCapsuleState('right');
-    else resetCapsule(); 
+    let finalX = dragOffset + ((e.type.includes("mouse") ? e.clientX : e.changedTouches[0].clientX) - startX);
+    if (finalX < -40) activateCapsuleState('left'); else if (finalX > 40) activateCapsuleState('right'); else resetCapsule(); 
 }
 
 function activateCapsuleState(direction) {
-    const wheel = document.getElementById("wheel");
-    const wrapper = document.getElementById("capsule-wrapper");
-    const bar = document.getElementById("capsule-bar");
-    
-    wheel.style.transform = `translateX(0)`; 
-    wrapper.classList.add("top-mode");
+    const wheel = document.getElementById("wheel"); const wrapper = document.getElementById("capsule-wrapper"); const bar = document.getElementById("capsule-bar");
+    wheel.style.transform = `translateX(0)`; wrapper.classList.add("top-mode");
 
     if(direction === 'left') {
-        wheel.className = "wheel drag-left"; 
-        bar.className = "capsule-bar left-active";
-        document.getElementById("capsule-content-desc").classList.add("active");
-        document.getElementById("capsule-content-chat").classList.remove("active");
+        wheel.className = "wheel drag-left"; bar.className = "capsule-bar left-active";
+        document.getElementById("capsule-content-desc").classList.add("active"); document.getElementById("capsule-content-chat").classList.remove("active");
     } else {
-        wheel.className = "wheel drag-right"; 
-        bar.className = "capsule-bar right-active";
-        document.getElementById("capsule-content-chat").classList.add("active");
-        document.getElementById("capsule-content-desc").classList.remove("active");
+        wheel.className = "wheel drag-right"; bar.className = "capsule-bar right-active";
+        document.getElementById("capsule-content-chat").classList.add("active"); document.getElementById("capsule-content-desc").classList.remove("active");
         renderCapsuleChats(); 
     }
 }
 
 function resetCapsule() {
-    document.getElementById("wheel").className = "wheel";
-    document.getElementById("wheel").style.transform = `translateX(-50%) rotate(0deg)`;
-    document.getElementById("capsule-bar").className = "capsule-bar";
-    document.getElementById("capsule-wrapper").classList.remove("top-mode");
-    document.getElementById("capsule-content-desc").classList.remove("active");
-    document.getElementById("capsule-content-chat").classList.remove("active");
+    document.getElementById("wheel").className = "wheel"; document.getElementById("wheel").style.transform = `translateX(-50%) rotate(0deg)`;
+    document.getElementById("capsule-bar").className = "capsule-bar"; document.getElementById("capsule-wrapper").classList.remove("top-mode");
+    document.getElementById("capsule-content-desc").classList.remove("active"); document.getElementById("capsule-content-chat").classList.remove("active");
 }
 
 function openCapsule(ticketId) {
     activeChatTicketId = ticketId;
     let ticket = allTicketsData.find(t => t.ticketId === ticketId);
-    
     let statusRaw = ticket.status || 'Pending';
-    let statusColor = '#d97706'; // Pending default
+    let statusColor = '#d97706'; 
     if(statusRaw === 'Completed') statusColor = '#16a34a';
     else if(statusRaw === 'In Progress') statusColor = '#0284c7';
     else if(statusRaw === 'Testing') statusColor = '#8b5cf6';
     else if(statusRaw === 'Not Feasible') statusColor = '#dc2626';
     
-    // Admin Dropdown updated with new statuses
     let adminDropdownHTML = "";
     if (currentUserRole === "Admin") {
-        let s1 = statusRaw == "Pending" ? "selected" : "";
-        let s2 = statusRaw == "In Progress" ? "selected" : "";
-        let s3 = statusRaw == "Testing" ? "selected" : "";
-        let s4 = statusRaw == "Completed" ? "selected" : "";
-        let s5 = statusRaw == "Not Feasible" ? "selected" : "";
-        
+        let s1 = statusRaw == "Pending" ? "selected" : ""; let s2 = statusRaw == "In Progress" ? "selected" : ""; let s3 = statusRaw == "Testing" ? "selected" : "";
+        let s4 = statusRaw == "Completed" ? "selected" : ""; let s5 = statusRaw == "Not Feasible" ? "selected" : "";
         adminDropdownHTML = `
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
                 <label style="font-size: 13px; color: #555; font-weight: bold; display: block;">Change Status:</label>
-                <select class="capsule-status-select" onchange="update('${ticket.ticketId}', this.value)">
-                    <option ${s1}>Pending</option>
-                    <option ${s2}>In Progress</option>
-                    <option ${s3}>Testing</option>
-                    <option ${s4}>Completed</option>
-                    <option ${s5}>Not Feasible</option>
+                <select class="capsule-status-select" onchange="updateOptimistic('${ticket.ticketId}', this.value)">
+                    <option ${s1}>Pending</option><option ${s2}>In Progress</option><option ${s3}>Testing</option><option ${s4}>Completed</option><option ${s5}>Not Feasible</option>
                 </select>
             </div>
         `;
@@ -544,12 +564,12 @@ function openCapsule(ticketId) {
 function closeCapsuleModal() {
     document.getElementById("capsule-modal").style.opacity = "0";
     setTimeout(() => { document.getElementById("capsule-modal").style.display = "none"; }, 300);
-    activeChatTicketId = null;
-    resetCapsule();
+    activeChatTicketId = null; resetCapsule();
 }
 
 function renderCapsuleChats() {
     let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
+    if(!ticket) return;
     let chatBox = document.getElementById("capsule-chat-box");
     let isMyTicket = (ticket.empName === currentUserName);
     let originalClass = isMyTicket ? "chat-mine" : "chat-other";
@@ -569,18 +589,23 @@ function renderCapsuleChats() {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// Mobile Capsule Optimistic Send
 async function sendCapsuleReply() {
     let msgInput = document.getElementById("capsule-chat-msg"); let msg = msgInput.value.trim(); if(!msg) return;
-    let btn = document.getElementById("capsule-btn-send-reply"); btn.innerText = "..."; btn.disabled = true;
+    let btn = document.getElementById("capsule-btn-send-reply"); btn.disabled = true;
     let d = getFormattedDateTime();
-    let chatBox = document.getElementById("capsule-chat-box");
     
-    chatBox.innerHTML += `<div class="chat-bubble chat-mine" style="opacity:0.7;"><div class="chat-sender">Sending...</div>${escapeHTML(msg)}<span class="chat-time">${d}</span></div>`;
-    chatBox.scrollTop = chatBox.scrollHeight; msgInput.value = "";
+    // FAST UI UPDATE (OPTIMISTIC)
+    let ticket = allTicketsData.find(t => t.ticketId === activeChatTicketId);
+    let chatsArr = ticket.chats && ticket.chats !== "[]" ? JSON.parse(ticket.chats) : [];
+    chatsArr.push({ senderRole: currentUserRole, msg: msg, time: d });
+    ticket.chats = JSON.stringify(chatsArr);
+    
+    msgInput.value = "";
+    renderCapsuleChats(); // Dikh gaya turant
 
-    try {
-        await api({ action: "addReply", ticketId: activeChatTicketId, senderRole: currentUserRole, msg: msg, time: d });
-        await loadTickets(currentUserRole); if(activeChatTicketId) renderCapsuleChats(); 
-    } catch(e) { alert("Failed to send reply"); }
-    btn.innerText = "Send"; btn.disabled = false;
+    // FIRE API IN BACKGROUND
+    api({ action: "addReply", ticketId: activeChatTicketId, senderRole: currentUserRole, msg: msg, time: d })
+    .then(() => { btn.disabled = false; silentSync(); })
+    .catch(() => { btn.disabled = false; });
 }
