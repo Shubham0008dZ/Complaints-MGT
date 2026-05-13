@@ -1,5 +1,5 @@
 * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; }
-body { background: #f4f7f6; display: flex; justify-content: center; padding: 20px 10px; color: #333; }
+body { background: #f4f7f6; display: flex; justify-content: center; padding: 20px 10px; color: #333; overflow-x: hidden;}
 .container { width: 100%; max-width: 900px; }
 
 .card { 
@@ -20,8 +20,9 @@ input, select, textarea {
     border-radius: 6px; 
     font-size: 16px; 
     outline: none;
+    transition: all 0.3s ease;
 }
-input:focus, textarea:focus { border-color: #007bff; }
+input:focus, textarea:focus { border-color: #007bff; box-shadow: 0 0 8px rgba(0,123,255,0.2); }
 
 button { 
     width: 100%; 
@@ -36,8 +37,8 @@ button {
     margin-top: 10px; 
     transition: 0.3s;
 }
-button:hover:not(:disabled) { background: #0056b3; }
-button:disabled { background: #b0c4de; cursor: not-allowed; }
+button:hover:not(:disabled) { background: #0056b3; transform: translateY(-1px); }
+button:disabled { background: #b0c4de; cursor: not-allowed; transform: none;}
 
 .outline-btn { background: transparent; color: #007bff; border: 2px solid #007bff; }
 .outline-btn:hover:not(:disabled) { background: #f0f8ff; color: #0056b3; }
@@ -48,51 +49,67 @@ button:disabled { background: #b0c4de; cursor: not-allowed; }
 p { color: #007bff; cursor: pointer; font-size: 14px; margin-top: 15px; font-weight: 500; }
 .small-text { font-size: 12px; color: #666; text-align: left; display: block; margin-top: 5px; }
 
-.file-upload-wrapper { text-align: left; margin: 10px 0; }
-input[type="file"] { padding: 10px; border: 1px dashed #ccc; background: #fafafa; }
-
 /* Fully Responsive Table setup */
-.table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
-th, td { border: 1px solid #eee; padding: 12px 10px; text-align: left; font-size: 14px; }
+.table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 100%; }
+th, td { border: 1px solid #eee; padding: 12px 10px; text-align: left; font-size: 14px; transition: background 0.3s; }
 th { background: #f8f9fa; font-weight: bold; }
-a { color: #007bff; text-decoration: none; }
+a { color: #007bff; text-decoration: none; cursor:pointer;}
 a:hover { text-decoration: underline; }
+tr:hover { background: #f8fbff; }
 
 /* Status Colors */
 .status-Pending { color: #d97706; font-weight: bold; }
 .status-Progress { color: #0284c7; font-weight: bold; }
 .status-Completed { color: #16a34a; font-weight: bold; }
 
-/* CHAT MODAL STYLES */
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 10px; }
-.modal-content { background: #fff; width: 100%; max-width: 500px; border-radius: 12px; display: flex; flex-direction: column; max-height: 90vh; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-.modal-header { padding: 15px 20px; background: #007bff; color: white; display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; font-size: 16px; }
-.close-btn { font-size: 24px; cursor: pointer; font-weight: bold; line-height: 1; margin-top: -5px; }
-.close-btn:hover { color: #ffcccc; }
-
-.chat-container { padding: 15px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f4f7f6; min-height: 250px; }
-.chat-bubble { 
-    padding: 10px 14px; 
-    border-radius: 10px; 
-    max-width: 80%; 
-    font-size: 14px; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-    /* ADDED to fix overflow of unbreakable text */
-    overflow-wrap: break-word;
-    word-wrap: break-word; /* For legacy support */
+/* --- MOBILE VIEW RESPONSIVENESS --- */
+@media (max-width: 768px) {
+    .hide-on-mobile { display: none !important; }
+    table { min-width: unset; }
+    td, th { font-size: 13px; padding: 10px 5px; }
+    .header h3 { font-size: 16px; }
+    .outline-btn, .logout-btn { padding: 6px 10px; font-size: 12px; }
 }
 
-/* Jo login hai, uske messages Right side (Green) */
+/* --- CAPSULE UI & SMOOTH ANIMATIONS --- */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 10px; overflow: hidden; pointer-events: none; }
+.modal.active { opacity: 1 !important; pointer-events: auto; }
+
+.capsule-container { width: 100%; max-width: 500px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+.capsule-container.top-mode { justify-content: flex-start; padding-top: 30px; }
+
+/* The Black Capsule Bar */
+.capsule-bar { width: 280px; height: 60px; background: rgba(20,20,20,0.9); border-radius: 40px; border: 2px solid rgba(255,255,255,0.1); position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 10; cursor: pointer; transition: all 0.5s ease; }
+.capsule-bar:active { transform: scale(0.97); }
+
+/* The White Wheel */
+.wheel { width: 50px; height: 50px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 50%; transform: translateX(-50%); box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 5; cursor: grab; display: flex; justify-content: center; align-items: center; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), left 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+.wheel:active { cursor: grabbing; }
+.wheel-grip { width: 4px; height: 15px; background: #ddd; border-radius: 2px; }
+
+/* Text inside Capsule */
+.wheel-text { color: #fff; font-size: 13px; font-weight: 600; opacity: 0.5; letter-spacing: 1px; user-select: none; transition: opacity 0.3s; z-index: 1;}
+
+/* Wheel States */
+.wheel.drag-left { left: 5px; transform: translateX(0); }
+.wheel.drag-right { left: calc(100% - 55px); transform: translateX(0); }
+.capsule-bar.left-active .left-text { opacity: 1; color: #fff; }
+.capsule-bar.right-active .right-text { opacity: 1; color: #fff; }
+
+/* Content Boxes (Desc & Chat) */
+.capsule-content { width: 100%; max-height: 80vh; background: #fff; border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); margin-top: 20px; display: flex; flex-direction: column; overflow: hidden; position: absolute; top: 100px; opacity: 0; visibility: hidden; transform: translateY(40px) scale(0.95); transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); }
+.capsule-content.active { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+
+/* Standard Chat Styles */
+.modal-header { padding: 15px 20px; background: #007bff; color: white; text-align: center;}
+.modal-header h3 { margin: 0; font-size: 16px; }
+.chat-container { padding: 15px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 250px; max-height: 60vh;}
+.chat-bubble { padding: 10px 14px; border-radius: 10px; max-width: 80%; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-wrap: break-word; word-wrap: break-word;}
 .chat-mine { align-self: flex-end; background: #dcfce3; border-bottom-right-radius: 0; }
-
-/* Saamne wale ke messages Left side (White) */
 .chat-other { align-self: flex-start; background: #fff; border: 1px solid #e2e8f0; border-bottom-left-radius: 0; }
-
 .chat-time { display: block; font-size: 10px; color: #888; margin-top: 5px; text-align: right; }
 .chat-sender { font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #007bff; }
-
 .chat-input-area { padding: 15px; background: #fff; display: flex; gap: 10px; border-top: 1px solid #eee; }
 .chat-input-area input { margin: 0; flex-grow: 1; border-radius: 20px; padding: 10px 15px; border: 1px solid #ccc; }
 .chat-input-area button { margin: 0; width: auto; padding: 10px 20px; border-radius: 20px; }
